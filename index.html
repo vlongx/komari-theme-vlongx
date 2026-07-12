@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Komari</title>
+    <script>
+      // Apply theme before first paint to avoid flash
+      (function () {
+        try {
+          var h = Number(new Date().toLocaleString("en", { timeZone: "Asia/Shanghai", hour: "numeric", hour12: false }));
+          document.documentElement.dataset.mode = (h >= 18 || h < 6) ? "night" : "day";
+        } catch (e) {
+          document.documentElement.dataset.mode = "day";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

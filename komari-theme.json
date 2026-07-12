@@ -1,0 +1,157 @@
+{
+  "name": "Tasogare 黄昏 自选延迟",
+  "short": "tasogare-tcping",
+  "description": "Tasogare glassmorphism theme: homepage cards show 0-3 visitor-selected exact latency tasks, while hover details show every latency task assigned to the node. Includes compact protocol badges, TCP/UDP counters and remaining value summary. 基于 Tasogare 黄昏：首页卡片展示用户自选 0～3 项，悬浮详情展示该节点全部延迟任务。",
+  "version": "2.0.0",
+  "author": "tryingmeow (carrier latency modification by vlongx)",
+  "url": "https://github.com/vlongx/komari-theme-tasogare-tcping",
+  "preview": "preview.png",
+  "configuration": {
+    "type": "managed",
+    "name": {
+      "en": "Tasogare Theme Settings",
+      "zh-CN": "Tasogare 主题设置",
+      "ja": "Tasogare テーマ設定"
+    },
+    "data": [
+      {
+        "name": {
+          "en": "Wallpapers",
+          "zh-CN": "壁纸",
+          "ja": "壁紙"
+        },
+        "type": "title"
+      },
+      {
+        "key": "wallpaperDay",
+        "type": "string",
+        "default": "",
+        "name": {
+          "en": "Day Wallpaper URL",
+          "zh-CN": "白天壁纸 URL",
+          "ja": "昼の壁紙 URL"
+        },
+        "help": {
+          "en": "Wallpaper for light mode. Leave empty to use the built-in day sky.",
+          "zh-CN": "亮色模式使用的壁纸。留空则使用内置的白天天空。",
+          "ja": "ライトモードの壁紙。空の場合は内蔵の昼空を使用します。"
+        }
+      },
+      {
+        "key": "wallpaperNight",
+        "type": "string",
+        "default": "",
+        "name": {
+          "en": "Night Wallpaper URL",
+          "zh-CN": "黑夜壁纸 URL",
+          "ja": "夜の壁紙 URL"
+        },
+        "help": {
+          "en": "Wallpaper for dark mode. Leave empty to use the built-in starry sky.",
+          "zh-CN": "暗色模式使用的壁纸。留空则使用内置的星空。",
+          "ja": "ダークモードの壁紙。空の場合は内蔵の星空を使用します。"
+        }
+      },
+      {
+        "name": {
+          "en": "Display",
+          "zh-CN": "显示",
+          "ja": "表示"
+        },
+        "type": "title"
+      },
+      {
+        "key": "showLatencyOnCard",
+        "type": "switch",
+        "default": true,
+        "name": {
+          "en": "Show selected latency tasks on cards",
+          "zh-CN": "卡片显示自选延迟任务",
+          "ja": "カードに選択した遅延タスクを表示"
+        },
+        "help": {
+          "en": "Cards show only the visitor-selected 0-3 exact tasks. The hover detail loads every latency task assigned to the current node. Tasks are never merged automatically.",
+          "zh-CN": "首页卡片仅展示用户选择的 0～3 项明确任务；鼠标悬停后，详情面板展示当前节点被分配的全部延迟监测任务。不同任务不会自动合并平均。",
+          "ja": "選択した0～3件のKomari遅延タスクを表示します。タスク間の平均化は行いません。"
+        }
+      },
+      {
+        "key": "latencyPickerEnabled",
+        "type": "switch",
+        "default": true,
+        "name": {
+          "en": "Enable homepage latency picker",
+          "zh-CN": "启用首页延迟任务选择器",
+          "ja": "ホーム遅延タスク選択を有効化"
+        },
+        "help": {
+          "en": "Lets each browser choose the 0-3 tasks shown on cards and custom labels. Hover details still show all tasks assigned to the node.",
+          "zh-CN": "在首页顶部增加选择按钮，实时读取 Komari 已创建的延迟任务，让用户自由选择卡片展示的 0～3 项并自定义名称；悬浮详情仍显示节点全部任务。",
+          "ja": "Komariの実タスクリストから0～3件を選択し、表示名を設定できます。選択はブラウザに保存されます。"
+        }
+      },
+      {
+        "key": "latencyDefaultTasks",
+        "type": "string",
+        "default": "",
+        "name": {
+          "en": "Default latency tasks",
+          "zh-CN": "默认延迟任务",
+          "ja": "既定の遅延タスク"
+        },
+        "help": {
+          "en": "Optional server-wide defaults, up to 3 task IDs or exact names separated by commas, e.g. 1,3,8. Visitors can override them in the homepage picker.",
+          "zh-CN": "可选的全站默认值，填写最多 3 个任务 ID 或完整任务名称，用英文逗号分隔，例如 1,3,8。用户可在首页选择器中覆盖。",
+          "ja": "最大3件のタスクIDまたは完全な名前をカンマ区切りで指定します。"
+        }
+      },
+      {
+        "key": "latencyDefaultAliases",
+        "type": "string",
+        "default": "",
+        "name": {
+          "en": "Default display labels",
+          "zh-CN": "默认显示名称",
+          "ja": "既定の表示名"
+        },
+        "help": {
+          "en": "Optional labels matching the default tasks, separated by commas, e.g. Unicom,Telecom,Tokyo.",
+          "zh-CN": "与默认任务顺序对应的显示名称，用英文逗号分隔，例如 联通,电信,东京。留空时自动简化任务名称。",
+          "ja": "既定タスクに対応する表示名をカンマ区切りで指定します。"
+        }
+      },
+      {
+        "key": "lossSensitivity",
+        "type": "select",
+        "options": "Strict,Standard,Relaxed",
+        "default": "Standard",
+        "name": {
+          "en": "Packet Loss Sensitivity",
+          "zh-CN": "丢包判定灵敏度",
+          "ja": "パケットロス判定感度"
+        },
+        "help": {
+          "en": "Loss thresholds for amber/red on cards and the quality strip. Strict 3%/9%, Standard 5%/12%, Relaxed 10%/25%. With infrequent probes, Strict may change color on a single lost packet.",
+          "zh-CN": "卡片与状态条丢包变黄/变红的阈值。严格 3%/9%，标准 5%/12%，宽松 10%/25%。探测频率较低时，严格档可能因偶发丢单个包而跳色。",
+          "ja": "カードと品質バーが黄/赤になるパケットロス閾値。厳格 3%/9%、標準 5%/12%、緩め 10%/25%。プローブ頻度が低い場合、厳格では単発のロスで色が変わることがあります。"
+        }
+      },
+      {
+        "key": "offlinePosition",
+        "type": "select",
+        "options": "First,Keep,Last",
+        "default": "Last",
+        "name": {
+          "en": "Offline Server Position",
+          "zh-CN": "离线节点位置",
+          "ja": "オフラインサーバーの位置"
+        },
+        "help": {
+          "en": "Where to place offline servers in the list.",
+          "zh-CN": "离线节点在列表中的排序位置。",
+          "ja": "リスト内のオフラインサーバーの位置。"
+        }
+      }
+    ]
+  }
+}
