@@ -46,6 +46,9 @@ const zh = {
   expired: "已到期",
   empty: "没有找到符合条件的节点 (´･ω･`)",
   free: "免费",
+  visitorIp: "访问 IP",
+  loadingShort: "获取中…",
+  unavailable: "暂不可用",
 };
 
 const en: typeof zh = {
@@ -96,6 +99,9 @@ const en: typeof zh = {
   expired: "Expired",
   empty: "No matching nodes (´･ω･`)",
   free: "Free",
+  visitorIp: "Visitor IP",
+  loadingShort: "Loading…",
+  unavailable: "Unavailable",
 };
 
 const isZh =

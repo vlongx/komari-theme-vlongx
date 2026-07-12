@@ -7,6 +7,7 @@ import Background from "./components/Background";
 import StatsBar from "./components/StatsBar";
 import NodeCard from "./components/NodeCard";
 import LatencyTaskSelector from "./components/LatencyTaskSelector";
+import VisitorInfo from "./components/VisitorInfo";
 import {
   clearStoredSelections,
   parseThemeSelections,
@@ -118,6 +119,9 @@ export default function App() {
   const showLatency = showLatencySetting !== false && showLatencySetting !== "false";
   const latencyPickerSetting = settings.latencyPickerEnabled;
   const latencyPickerEnabled = latencyPickerSetting !== false && latencyPickerSetting !== "false";
+  const visitorIpSetting = settings.showVisitorIp;
+  const showVisitorIp = visitorIpSetting !== false && visitorIpSetting !== "false";
+  const visitorIpEndpoint = (settings.visitorIpEndpoint as string) || "";
   const themeLatencySelections = useMemo(
     () => parseThemeSelections(settings.latencyDefaultTasks, settings.latencyDefaultAliases, pingTasks),
     [settings.latencyDefaultTasks, settings.latencyDefaultAliases, pingTasks],
@@ -275,17 +279,20 @@ export default function App() {
           ))}
         </div>
 
-        <footer className="text-center text-[12px] text-dim mt-10">
-          Powered by{" "}
-          <a href="https://github.com/komari-monitor/komari" className="underline opacity-80 hover:opacity-100">
-            Komari
-          </a>{" "}
-          · Theme{" "}
-          <a href="https://github.com/tryingmeow/komari-theme-tasogare" className="underline opacity-80 hover:opacity-100">
-            Tasogare 黄昏
-          </a>{" "}
-          · Carrier latency mod (｡•̀ᴗ-)✧
-        </footer>
+        <div className="site-footer mt-10">
+          <VisitorInfo enabled={showVisitorIp} endpoint={visitorIpEndpoint} />
+          <footer className="text-center text-[12px] text-dim">
+            Powered by{" "}
+            <a href="https://github.com/komari-monitor/komari" className="underline opacity-80 hover:opacity-100">
+              Komari
+            </a>{" "}
+            · Theme{" "}
+            <a href="https://github.com/tryingmeow/komari-theme-tasogare" className="underline opacity-80 hover:opacity-100">
+              Tasogare 黄昏
+            </a>{" "}
+            · Latency mod by vlongx (｡•̀ᴗ-)✧
+          </footer>
+        </div>
       </div>
 
       <LatencyTaskSelector

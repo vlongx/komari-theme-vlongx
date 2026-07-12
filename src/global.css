@@ -349,12 +349,12 @@ input.search {
   border-radius: 2px;
 }
 
-/* Hover-only TCPing latency detail. The popover is portaled to body so it is
-   never clipped by the card grid. Its content follows the large delay panel
-   pattern: range selector, carrier summary cards, latency-only chart and legend. */
+/* Click-to-open latency detail. The dialog is portaled to body so it is never
+   clipped by the card grid. Click avoids accidental activation while moving
+   across neighboring cards. */
 .tcping-panel {
   position: relative;
-  cursor: default;
+  cursor: pointer;
   outline: none;
 }
 .tcping-panel:focus-visible {
@@ -374,6 +374,20 @@ input.search {
     transform: translateY(0) scale(1);
   }
 }
+.tcping-click-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 159;
+  background: rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: tcpingBackdropIn 0.16s ease both;
+}
+@keyframes tcpingBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .tcping-hover-popover {
   position: fixed;
   z-index: 160;
@@ -668,6 +682,54 @@ input.search {
   height: 6px;
   border-radius: 999px;
 }
+.tcping-chart-tooltip-dot.is-loss {
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Bottom visitor IP information. */
+.site-footer {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+}
+.visitor-ip {
+  display: inline-flex;
+  max-width: min(100%, 560px);
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 13px;
+  color: var(--text-dim);
+  font-size: 11px;
+  border-radius: 999px;
+}
+.visitor-ip-icon {
+  color: var(--accent);
+  font-size: 14px;
+  line-height: 1;
+}
+.visitor-ip-label {
+  white-space: nowrap;
+}
+.visitor-ip-value {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.visitor-ip-type {
+  padding: 1px 6px;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 999px;
+}
 
 @media (max-width: 760px) {
   .tcping-hover-popover {
@@ -715,7 +777,8 @@ input.search {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tcping-hover-popover {
+  .tcping-hover-popover,
+  .tcping-click-backdrop {
     animation: none !important;
   }
 }

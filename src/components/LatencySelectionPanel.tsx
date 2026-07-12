@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  Bar,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -69,6 +70,7 @@ const isZh =
   (navigator.language || "").toLowerCase().startsWith("zh");
 
 const taskKey = (taskId: number) => `task_${taskId}`;
+const lossKey = (taskId: number) => `loss_${taskId}`;
 
 function emptyData(selections: ResolvedLatencySelection[]): LatencyData {
   const history: HistoryMap = {};
@@ -173,17 +175,22 @@ function buildChartData(
   const start = now - span;
   const bucketCount = chartBucketCount(hours);
   const bucketSpan = span / bucketCount;
-  const buckets = Array.from({ length: bucketCount }, () => new Map<number, { sum: number; count: number }>());
+  const buckets = Array.from(
+    { length: bucketCount },
+    () => new Map<number, { sum: number; ok: number; total: number }>(),
+  );
 
   for (const item of selections) {
     for (const record of grouped.get(item.taskId) || []) {
-      if (record.value <= 0) continue;
       const ts = new Date(record.time).getTime();
       if (!Number.isFinite(ts) || ts < start || ts > now) continue;
       const index = Math.min(bucketCount - 1, Math.max(0, Math.floor((ts - start) / bucketSpan)));
-      const current = buckets[index].get(item.taskId) || { sum: 0, count: 0 };
-      current.sum += record.value;
-      current.count++;
+      const current = buckets[index].get(item.taskId) || { sum: 0, ok: 0, total: 0 };
+      current.total++;
+      if (record.value > 0) {
+        current.sum += record.value;
+        current.ok++;
+      }
       buckets[index].set(item.taskId, current);
     }
   }
@@ -193,7 +200,9 @@ function buildChartData(
     const point: ChartPoint = { timestamp, time: formatAxisTime(timestamp, hours) };
     for (const item of selections) {
       const stat = bucket.get(item.taskId);
-      if (stat?.count) point[taskKey(item.taskId)] = Math.round(stat.sum / stat.count);
+      if (!stat?.total) continue;
+      if (stat.ok) point[taskKey(item.taskId)] = Math.round(stat.sum / stat.ok);
+      point[lossKey(item.taskId)] = Math.round(((stat.total - stat.ok) / stat.total) * 1000) / 10;
     }
     return point;
   });
@@ -361,20 +370,27 @@ function LatencyTooltip({
   label,
 }: {
   active?: boolean;
-  payload?: Array<{ name?: string; value?: number; color?: string }>;
+  payload?: Array<{ name?: string; value?: number; color?: string; dataKey?: string | number }>;
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="tcping-chart-tooltip glass-strong">
       <div className="tcping-chart-tooltip-time">{label}</div>
-      {payload.map((item) => (
-        <div key={item.name} className="tcping-chart-tooltip-row num">
-          <span className="tcping-chart-tooltip-dot" style={{ background: item.color }} />
-          <span>{item.name}</span>
-          <strong>{Math.round(Number(item.value) || 0)} ms</strong>
-        </div>
-      ))}
+      {payload.map((item) => {
+        const isLoss = String(item.dataKey || "").startsWith("loss_");
+        const value = Number(item.value) || 0;
+        return (
+          <div key={`${item.name}-${String(item.dataKey)}`} className="tcping-chart-tooltip-row num">
+            <span
+              className={`tcping-chart-tooltip-dot ${isLoss ? "is-loss" : ""}`}
+              style={{ background: item.color }}
+            />
+            <span>{item.name}</span>
+            <strong>{isLoss ? `${value.toFixed(1)}%` : `${Math.round(value)} ms`}</strong>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -402,8 +418,6 @@ function LatencyPopover({
   onSelectAll,
   onSelectNone,
   onClose,
-  onMouseEnter,
-  onMouseLeave,
 }: {
   open: boolean;
   position: PopoverPosition | null;
@@ -421,25 +435,29 @@ function LatencyPopover({
   onSelectAll: () => void;
   onSelectNone: () => void;
   onClose: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
 }) {
   if (!open || !position || typeof document === "undefined") return null;
   const visibleItems = selections.filter((item) => visible[taskKey(item.taskId)] !== false);
   const hasChartData = chart.some((point) =>
-    visibleItems.some((item) => point[taskKey(item.taskId)] !== undefined),
+    visibleItems.some(
+      (item) =>
+        point[taskKey(item.taskId)] !== undefined ||
+        Number(point[lossKey(item.taskId)] || 0) > 0,
+    ),
   );
 
   return createPortal(
-    <div
-      className="tcping-hover-popover"
-      style={{ left: position.left, top: position.top, width: position.width, maxHeight: position.maxHeight }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      onClick={(event) => event.stopPropagation()}
-      role="presentation"
-    >
-      <div className="tcping-hover-card glass-strong">
+    <div className="tcping-click-backdrop" onMouseDown={onClose} role="presentation">
+      <div
+        className="tcping-hover-popover"
+        style={{ left: position.left, top: position.top, width: position.width, maxHeight: position.maxHeight }}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${nodeName} ${title}`}
+      >
+        <div className="tcping-hover-card glass-strong">
         <div className="tcping-detail-header">
           <strong>{nodeName} {title}</strong>
           <span
@@ -512,7 +530,11 @@ function LatencyPopover({
 
         <div className="tcping-detail-mode-row">
           <span className="is-active">{t("latency")}</span>
-          <small>{isZh ? "显示该节点全部延迟监测任务" : "All latency tasks assigned to this node"}</small>
+          <small>
+            {isZh
+              ? "折线为延迟，彩色竖条为对应任务的丢包或断连"
+              : "Lines show latency; colored vertical bars show packet loss or disconnects"}
+          </small>
         </div>
 
         <div className="tcping-detail-chart-surface">
@@ -521,14 +543,42 @@ function LatencyPopover({
             {loading && <div className="tcping-detail-loading">{t("loading")}</div>}
             {hasChartData ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chart} margin={{ top: 18, right: 18, left: -4, bottom: 4 }}>
+                <ComposedChart
+                  data={chart}
+                  margin={{ top: 18, right: 18, left: -4, bottom: 4 }}
+                  barCategoryGap="55%"
+                  barGap={0}
+                >
                   <CartesianGrid stroke="var(--track)" vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="time" tick={{ fill: "var(--text-dim)", fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={34} />
-                  <YAxis domain={[0, "auto"]} tick={{ fill: "var(--text-dim)", fontSize: 10 }} tickLine={false} axisLine={false} width={46} />
+                  <YAxis
+                    yAxisId="latency"
+                    domain={[0, "auto"]}
+                    tick={{ fill: "var(--text-dim)", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={46}
+                  />
+                  <YAxis yAxisId="loss" domain={[0, 100]} hide />
                   <Tooltip content={<LatencyTooltip />} />
+                  {visibleItems.map((item) => (
+                    <Bar
+                      key={`loss-${item.taskId}`}
+                      yAxisId="loss"
+                      dataKey={lossKey(item.taskId)}
+                      name={`${item.label} ${item.typeLabel} ${t("loss")}`}
+                      fill={item.color}
+                      fillOpacity={0.48}
+                      maxBarSize={4}
+                      minPointSize={3}
+                      radius={[2, 2, 0, 0]}
+                      isAnimationActive={false}
+                    />
+                  ))}
                   {visibleItems.map((item) => (
                     <Line
                       key={item.taskId}
+                      yAxisId="latency"
                       type="monotone"
                       dataKey={taskKey(item.taskId)}
                       name={`${item.label} ${item.typeLabel}`}
@@ -539,7 +589,7 @@ function LatencyPopover({
                       isAnimationActive={false}
                     />
                   ))}
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             ) : (
               <div className="tcping-hover-empty">
@@ -560,6 +610,7 @@ function LatencyPopover({
               );
             })}
           </div>
+        </div>
         </div>
       </div>
     </div>,
@@ -613,7 +664,6 @@ export default function LatencySelectionPanel({
   );
 
   const panelRef = useRef<HTMLElement>(null);
-  const closeTimer = useRef<number | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<PopoverPosition | null>(null);
   const hoverData = useLatencyData(
@@ -632,8 +682,6 @@ export default function LatencySelectionPanel({
     setVisible(next);
   }, [hoverSelectionKey]);
 
-  const cancelClose = () => window.clearTimeout(closeTimer.current);
-
   const updatePosition = () => {
     const element = panelRef.current;
     if (!element) return;
@@ -651,34 +699,31 @@ export default function LatencySelectionPanel({
     setPosition({ left, top, width, maxHeight: Math.max(320, viewportHeight - top - 12) });
   };
 
-  const showPopover = () => {
-    cancelClose();
+  const togglePopover = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
     updatePosition();
     setOpen(true);
   };
 
-  const scheduleClose = () => {
-    cancelClose();
-    closeTimer.current = window.setTimeout(() => setOpen(false), 130);
-  };
-
   useEffect(() => {
     if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const close = () => setOpen(false);
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     window.addEventListener("resize", close);
-    window.addEventListener("scroll", close, true);
     window.addEventListener("keydown", onKey);
     return () => {
+      document.body.style.overflow = previousOverflow;
       window.removeEventListener("resize", close);
-      window.removeEventListener("scroll", close, true);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
 
   if (applicableSelections.length === 0) return null;
 
@@ -686,11 +731,20 @@ export default function LatencySelectionPanel({
     <section
       ref={panelRef}
       className={`tcping-panel ${open ? "is-popover-open" : ""}`}
-      onMouseEnter={showPopover}
-      onMouseLeave={scheduleClose}
-      onFocus={showPopover}
-      onBlur={scheduleClose}
-      onClick={(event) => event.stopPropagation()}
+      role="button"
+      aria-expanded={open}
+      aria-label={isZh ? "点击查看全部延迟与丢包详情" : "Click to view all latency and packet-loss details"}
+      onClick={(event) => {
+        event.stopPropagation();
+        togglePopover();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          togglePopover();
+        }
+      }}
       tabIndex={0}
     >
       <div className="tcping-panel-header">
@@ -727,8 +781,6 @@ export default function LatencySelectionPanel({
           setVisible(next);
         }}
         onClose={() => setOpen(false)}
-        onMouseEnter={cancelClose}
-        onMouseLeave={scheduleClose}
       />
     </section>
   );

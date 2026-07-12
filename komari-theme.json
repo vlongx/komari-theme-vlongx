@@ -1,10 +1,10 @@
 {
   "name": "Tasogare 黄昏 自选延迟",
   "short": "tasogare-tcping",
-  "description": "Tasogare glassmorphism theme: homepage cards show 0-3 visitor-selected exact latency tasks, while hover details show every latency task assigned to the node. Includes compact protocol badges, TCP/UDP counters and remaining value summary. 基于 Tasogare 黄昏：首页卡片展示用户自选 0～3 项，悬浮详情展示该节点全部延迟任务。",
-  "version": "2.0.0",
+  "description": "Tasogare glassmorphism theme with configurable latency cards, click-to-open all-task latency details, packet-loss event bars, TCP/UDP counters, remaining value, and visitor IP footer. 基于 Tasogare 黄昏：首页自选延迟、点击查看全部任务、丢包竖条、连接数、剩余价值与底部访问 IP。",
+  "version": "2.1.0",
   "author": "tryingmeow (carrier latency modification by vlongx)",
-  "url": "https://github.com/vlongx/komari-theme-tasogare-tcping",
+  "url": "https://github.com/vlongx/komari-theme-vlongx",
   "preview": "preview.png",
   "configuration": {
     "type": "managed",
@@ -70,8 +70,8 @@
           "ja": "カードに選択した遅延タスクを表示"
         },
         "help": {
-          "en": "Cards show only the visitor-selected 0-3 exact tasks. The hover detail loads every latency task assigned to the current node. Tasks are never merged automatically.",
-          "zh-CN": "首页卡片仅展示用户选择的 0～3 项明确任务；鼠标悬停后，详情面板展示当前节点被分配的全部延迟监测任务。不同任务不会自动合并平均。",
+          "en": "Cards show only the visitor-selected 0-3 exact tasks. Clicking the latency area opens every task assigned to the node, with colored vertical bars marking packet loss or disconnects. Tasks are never merged automatically.",
+          "zh-CN": "首页卡片仅展示用户选择的 0～3 项明确任务；点击卡片延迟区域后，详情面板展示当前节点被分配的全部延迟任务，并以彩色竖条标出丢包或断连。不同任务不会自动合并平均。",
           "ja": "選択した0～3件のKomari遅延タスクを表示します。タスク間の平均化は行いません。"
         }
       },
@@ -118,6 +118,36 @@
           "en": "Optional labels matching the default tasks, separated by commas, e.g. Unicom,Telecom,Tokyo.",
           "zh-CN": "与默认任务顺序对应的显示名称，用英文逗号分隔，例如 联通,电信,东京。留空时自动简化任务名称。",
           "ja": "既定タスクに対応する表示名をカンマ区切りで指定します。"
+        }
+      },
+      {
+        "key": "showVisitorIp",
+        "type": "switch",
+        "default": true,
+        "name": {
+          "en": "Show visitor IP in footer",
+          "zh-CN": "底部显示访问 IP",
+          "ja": "フッターに訪問者IPを表示"
+        },
+        "help": {
+          "en": "Shows the current browser public IP at the bottom of the homepage.",
+          "zh-CN": "在首页底部显示当前访问者浏览器的公网 IP 地址。",
+          "ja": "ホームページ下部に現在のブラウザのパブリックIPを表示します。"
+        }
+      },
+      {
+        "key": "visitorIpEndpoint",
+        "type": "string",
+        "default": "https://api64.ipify.org?format=json",
+        "name": {
+          "en": "Visitor IP API endpoint",
+          "zh-CN": "访问 IP 查询接口",
+          "ja": "訪問者IP APIエンドポイント"
+        },
+        "help": {
+          "en": "JSON or text endpoint that returns an IP. Default uses api64.ipify.org. Replace it with your own endpoint if preferred.",
+          "zh-CN": "返回 IP 的 JSON 或纯文本接口，默认使用 api64.ipify.org；如需避免第三方查询，可替换为自己的接口。",
+          "ja": "IPを返すJSONまたはテキストAPI。既定はapi64.ipify.orgです。"
         }
       },
       {
