@@ -49,3 +49,4 @@ TCP、ICMP、HTTP 可以任意混合。每个首页展示项严格对应一个�
 下载 Release 中的 Komari 安装包，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
+# komari-theme-vlongx
