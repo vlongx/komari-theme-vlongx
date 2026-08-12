@@ -27,7 +27,7 @@ export interface LatestStatus {
   client: string;
   time: string;
   cpu: number; // percent 0-100
-  gpu: number;
+  gpu: number; // percent 0-100, averaged by the agent when multiple GPUs exist
   ram: number;
   ram_total: number;
   swap: number;
@@ -83,23 +83,28 @@ export interface LoadRecord {
   process: number;
 }
 
-export interface GPUDeviceInfo {
-  name: string;
-  memory_total: number;
-  memory_used: number;
+export interface GPURecord {
+  client: string;
+  time: string;
+  device_index: number;
+  device_name: string;
+  mem_total: number;
+  mem_used: number;
   utilization: number;
   temperature: number;
 }
 
-export interface GPUDetailReport {
-  count: number;
-  average_usage: number;
-  detailed_info: GPUDeviceInfo[];
+export interface GPUDeviceHistory {
+  device_index: number;
+  device_name: string;
+  records: GPURecord[];
 }
 
-export interface RecentNodeReport {
-  updated_at?: string;
-  gpu?: GPUDetailReport | null;
+export interface LoadRecordsResponse {
+  count: number;
+  records: LoadRecord[];
+  has_gpu_data?: boolean;
+  gpu_devices?: Record<string, GPUDeviceHistory>;
 }
 
 export interface PingTask {
@@ -130,11 +135,9 @@ async function getJSON<T>(url: string): Promise<T> {
 export const getPublicInfo = () => getJSON<PublicInfo>("/api/public");
 export const getNodes = () => getJSON<NodeInfo[]>("/api/nodes");
 export const getRecords = (uuid: string, hours: number) =>
-  getJSON<{ count: number; records: LoadRecord[] }>(
+  getJSON<LoadRecordsResponse>(
     `/api/records/load?uuid=${uuid}&hours=${hours}`,
   );
-export const getRecentReports = (uuid: string) =>
-  getJSON<RecentNodeReport[]>(`/api/recent/${encodeURIComponent(uuid)}`);
 export const getPingTasks = () => getJSON<PingTask[]>("/api/task/ping");
 export const getPingRecords = (uuid: string, hours: number) =>
   getJSON<{ count: number; records: PingRecord[]; tasks?: PingTask[] }>(
