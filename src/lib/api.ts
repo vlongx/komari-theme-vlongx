@@ -68,6 +68,7 @@ export interface PublicInfo {
 export interface LoadRecord {
   time: string;
   cpu: number;
+  gpu?: number;
   ram: number;
   ram_total: number;
   swap: number;
@@ -77,9 +78,37 @@ export interface LoadRecord {
   disk_total: number;
   net_in: number;
   net_out: number;
+  net_total_up?: number;
+  net_total_down?: number;
+  traffic_up?: number;
+  traffic_down?: number;
   connections: number;
   connections_udp: number;
   process: number;
+}
+
+export interface GPURecord {
+  client: string;
+  time: string;
+  device_index: number;
+  device_name: string;
+  mem_total: number;
+  mem_used: number;
+  utilization: number;
+  temperature: number;
+}
+
+export interface GPUDeviceHistory {
+  device_index: number;
+  device_name: string;
+  records: GPURecord[];
+}
+
+export interface LoadRecordsResponse {
+  count: number;
+  records: LoadRecord[];
+  has_gpu_data?: boolean;
+  gpu_devices?: Record<string, GPUDeviceHistory>;
 }
 
 export interface PingTask {
@@ -110,7 +139,7 @@ async function getJSON<T>(url: string): Promise<T> {
 export const getPublicInfo = () => getJSON<PublicInfo>("/api/public");
 export const getNodes = () => getJSON<NodeInfo[]>("/api/nodes");
 export const getRecords = (uuid: string, hours: number) =>
-  getJSON<{ count: number; records: LoadRecord[] }>(
+  getJSON<LoadRecordsResponse>(
     `/api/records/load?uuid=${uuid}&hours=${hours}`,
   );
 export const getPingTasks = () => getJSON<PingTask[]>("/api/task/ping");

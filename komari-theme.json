@@ -1,9 +1,9 @@
 {
-  "name": "Tasogare 黄昏 自选延迟",
+  "name": "Tasogare 黄昏 自选延迟 GPU",
   "short": "tasogare-tcping",
-  "description": "Tasogare glassmorphism theme with configurable latency cards, click-to-open all-task latency details, packet-loss event bars, TCP/UDP counters, remaining value, and visitor IP footer. 基于 Tasogare 黄昏：首页自选延迟、点击查看全部任务、丢包竖条、连接数、剩余价值与底部访问 IP。",
-  "version": "2.1.0",
-  "author": "tryingmeow (carrier latency modification by vlongx)",
+  "description": "Tasogare glassmorphism theme with configurable latency cards, click-to-open all-task latency details, GPU/iGPU hardware details, monthly traffic-cycle accounting, packet-loss event bars, TCP/UDP counters, remaining value, and visitor IP footer. 基于 Tasogare 黄昏：首页自选延迟、GPU/核显详情、按月流量周期、点击查看全部任务、丢包竖条、连接数、剩余价值与底部访问 IP。",
+  "version": "2.2.0",
+  "author": "tryingmeow (carrier latency/GPU/traffic modification by vlongx)",
   "url": "https://github.com/vlongx/komari-theme-vlongx",
   "preview": "preview.png",
   "configuration": {
@@ -59,6 +59,21 @@
           "ja": "表示"
         },
         "type": "title"
+      },
+      {
+        "key": "trafficResetDay",
+        "type": "string",
+        "default": "1",
+        "name": {
+          "en": "Monthly traffic reset day",
+          "zh-CN": "每月流量重置日",
+          "ja": "月間通信量リセット日"
+        },
+        "help": {
+          "en": "Enter 1-28. Traffic cards calculate only the current billing cycle. A node tag such as traffic-reset:13 overrides this value for that node.",
+          "zh-CN": "填写 1～28。流量卡片只计算当前计费周期；某台机器需要不同日期时，可给该节点添加标签 traffic-reset:13 单独覆盖。",
+          "ja": "1～28を指定します。ノードタグ traffic-reset:13 を付けると、そのノードだけ個別に上書きできます。"
+        }
       },
       {
         "key": "showLatencyOnCard",

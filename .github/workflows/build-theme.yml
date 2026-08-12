@@ -1,0 +1,51 @@
+name: Build Komari Theme
+
+on:
+  push:
+    branches:
+      - chatgpt-gpu-build-20260812
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        run: npm run package
+
+      - name: Upload theme zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: komari-theme-tasogare-gpu-2.2.0-komari
+          path: komari-theme-tasogare-gpu-2.2.0-komari.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v2.2.0-test"
+          ZIP="komari-theme-tasogare-gpu-2.2.0-komari.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" "$ZIP" \
+              --target "$GITHUB_SHA" \
+              --title "v2.2.0 test build" \
+              --prerelease \
+              --notes "Komari Tasogare v2.2.0 test build: GPU/iGPU detail fixes, full CPU model, billing-cycle traffic calculation, and node-detail latency chart removed. Homepage latency-area popup remains unchanged."
+          fi
