@@ -1,0 +1,35 @@
+name: Build Komari Theme
+
+on:
+  push:
+    branches:
+      - chatgpt-gpu-build-20260812
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        run: npm run package
+
+      - name: Upload theme zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: komari-theme-tasogare-gpu-2.2.0-komari
+          path: komari-theme-tasogare-gpu-2.2.0-komari.zip
+          if-no-files-found: error
