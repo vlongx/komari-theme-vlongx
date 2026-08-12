@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { LatestStatus, LoadRecord, NodeInfo, PingRecord, PingTask } from "../lib/api";
+import type { GPUDeviceHistory, LatestStatus, LoadRecord, NodeInfo, PingRecord, PingTask } from "../lib/api";
 import { getPingRecords, getPingTasks, getRecords } from "../lib/api";
 import { daysUntil, fmtBytes, fmtDate, fmtPercent, fmtSpeed, fmtTime, fmtUptime } from "../lib/format";
 import { fmtCycle, fmtDaysLeft, t } from "../lib/i18n";
@@ -24,6 +24,13 @@ interface Props {
   status?: LatestStatus;
   mode: "day" | "night";
   onClose: () => void;
+}
+
+interface GPUDisplayDevice {
+  name: string;
+  utilization: number | null;
+  memUsed: number;
+  memTotal: number;
 }
 
 const RANGES = [
@@ -69,11 +76,16 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
-function MetaItem({ k, v }: { k: string; v: string }) {
+function MetaItem({ k, v, wrap = false }: { k: string; v: string; wrap?: boolean }) {
   return (
     <div className="min-w-0">
       <div className="text-[11px] text-dim">{k}</div>
-      <div className="text-[13px] font-medium truncate" title={v}>{v}</div>
+      <div
+        className={`text-[13px] font-medium ${wrap ? "whitespace-normal break-words leading-snug" : "truncate"}`}
+        title={v}
+      >
+        {v}
+      </div>
     </div>
   );
 }
@@ -123,7 +135,6 @@ function PingLegend({
         const a = avg.get(task.id) ?? 0;
         const l = loss.get(task.id) ?? 0;
         const face = a > 0 ? pingFace(a, l) : "(×ω×)";
-        // face = combined health (loss drags it down); the ms figure is colored by latency alone
         const faceColor = a > 0 ? pingColor(a, l) : "#fb7185";
         const msColor = a > 0 ? pingColor(a) : "#fb7185";
         return (
@@ -169,6 +180,7 @@ function PingLegend({
 export default function DetailModal({ node, status, mode, onClose }: Props) {
   const [hours, setHours] = useState(6);
   const [records, setRecords] = useState<LoadRecord[] | null>(null);
+  const [gpuHistories, setGpuHistories] = useState<Record<string, GPUDeviceHistory>>({});
   const [pingData, setPingData] = useState<{ tasks: PingTask[]; records: PingRecord[] } | null>(null);
 
   const axis = mode === "day" ? "rgba(38,44,74,0.45)" : "rgba(233,236,255,0.45)";
@@ -188,8 +200,16 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
     let gone = false;
     setRecords(null);
     getRecords(node.uuid, hours)
-      .then((d) => !gone && setRecords(d.records || []))
-      .catch(() => !gone && setRecords([]));
+      .then((d) => {
+        if (gone) return;
+        setRecords(d.records || []);
+        setGpuHistories(d.gpu_devices || {});
+      })
+      .catch(() => {
+        if (gone) return;
+        setRecords([]);
+        setGpuHistories({});
+      });
     Promise.all([getPingTasks(), getPingRecords(node.uuid, hours)])
       .then(([tasks, pr]) => {
         if (gone) return;
@@ -201,18 +221,50 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
     };
   }, [node.uuid, hours]);
 
+  const gpuDevices = useMemo<GPUDisplayDevice[]>(() => {
+    const histories = Object.values(gpuHistories).sort((a, b) => a.device_index - b.device_index);
+    if (histories.length > 0) {
+      return histories.map((history) => {
+        const latest = [...(history.records || [])].sort(
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+        )[0];
+        return {
+          name: history.device_name || latest?.device_name || node.gpu_name || t("gpu"),
+          utilization: latest && Number.isFinite(latest.utilization) ? latest.utilization : null,
+          memUsed: latest?.mem_used || 0,
+          memTotal: latest?.mem_total || 0,
+        };
+      });
+    }
+    const fallbackName = (node.gpu_name || "").trim();
+    return fallbackName
+      ? [{ name: fallbackName, utilization: null, memUsed: 0, memTotal: 0 }]
+      : [];
+  }, [gpuHistories, node.gpu_name]);
+
+  const gpuNames = gpuDevices.map((g) => g.name).join(" · ");
+  const gpuUsage = gpuDevices
+    .map((g) => `${g.name}: ${g.utilization === null ? "—" : `${g.utilization.toFixed(1)}%`}`)
+    .join(" · ");
+  const gpuMemory = gpuDevices
+    .map((g) =>
+      g.memTotal > 0
+        ? `${g.name}: ${fmtBytes(g.memUsed)} / ${fmtBytes(g.memTotal)}`
+        : `${g.name}: ${t("sharedMemory")}`,
+    )
+    .join(" · ");
+
   const loadData = useMemo(
     () =>
-      // records may arrive out of order; charts need chronological order
       [...(records || [])]
         .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
         .map((r) => ({
-        time: fmtTime(r.time, hours),
-        cpu: Math.min(100, r.cpu),
-        ram: fmtPercent(r.ram, r.ram_total || node.mem_total),
-        up: r.net_out,
-        down: r.net_in,
-      })),
+          time: fmtTime(r.time, hours),
+          cpu: Math.min(100, r.cpu),
+          ram: fmtPercent(r.ram, r.ram_total || node.mem_total),
+          up: r.net_out,
+          down: r.net_in,
+        })),
     [records, hours, node.mem_total],
   );
 
@@ -257,7 +309,6 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="glass-strong rounded-t-3xl sm:rounded-3xl w-full sm:w-[min(880px,94vw)] max-h-[92vh] sm:max-h-[88vh] overflow-y-auto p-5 sm:p-6 pop">
-        {/* header */}
         <div className="flex items-center gap-2.5 mb-4">
           <Flag region={node.region} size={30} />
           <div className="flex-1 min-w-0">
@@ -281,12 +332,18 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
           </button>
         </div>
 
-        {/* meta */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 rounded-2xl p-3.5" style={{ background: "var(--chip)", border: "1px solid var(--glass-border)" }}>
-          <MetaItem k="CPU" v={`${node.cpu_name} ×${node.cpu_cores}`} />
+          <MetaItem k="CPU" v={`${node.cpu_name} ×${node.cpu_cores}`} wrap />
           <MetaItem k={t("virtualization")} v={`${node.virtualization || "-"} / ${node.arch}`} />
           <MetaItem k={t("ram")} v={fmtBytes(node.mem_total)} />
           <MetaItem k={t("disk")} v={fmtBytes(node.disk_total)} />
+          {gpuDevices.length > 0 && (
+            <>
+              <MetaItem k={t("gpu")} v={gpuNames} wrap />
+              <MetaItem k={t("gpuUsage")} v={gpuUsage} wrap />
+              <MetaItem k={t("gpuMemory")} v={gpuMemory} wrap />
+            </>
+          )}
           {node.price !== 0 && (
             <MetaItem
               k={t("price")}
@@ -309,7 +366,6 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
           )}
         </div>
 
-        {/* range tabs */}
         <div className="flex gap-1.5 mb-3">
           {RANGES.map((r) => (
             <button
