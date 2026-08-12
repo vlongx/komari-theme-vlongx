@@ -3,7 +3,7 @@ name: Build Komari Theme
 on:
   push:
     branches:
-      - chatgpt-gpu-build-20260812
+      - main
   workflow_dispatch:
 
 jobs:
@@ -27,25 +27,59 @@ jobs:
       - name: Build and package
         run: npm run package
 
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ZIP="komari-theme-tasogare-gpu-${VERSION}-komari.zip"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
       - name: Upload theme zip
         uses: actions/upload-artifact@v4
         with:
-          name: komari-theme-tasogare-gpu-2.2.0-komari
-          path: komari-theme-tasogare-gpu-2.2.0-komari.zip
+          name: komari-theme-tasogare-gpu-${{ steps.meta.outputs.version }}-komari
+          path: ${{ steps.meta.outputs.zip }}
           if-no-files-found: error
 
-      - name: Publish GitHub test release
+      - name: Publish GitHub release
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          ZIP: ${{ steps.meta.outputs.zip }}
+        shell: bash
         run: |
-          TAG="v2.2.0-test"
-          ZIP="komari-theme-tasogare-gpu-2.2.0-komari.zip"
+          cat > release-notes.md <<'EOF'
+          ## Tasogare 黄昏 自选延迟 GPU v2.2.0
+
+          基于 Tasogare v1.2.2 整合并增强。
+
+          ### 本次更新
+          - CPU 型号在服务器详情中完整显示，不再截断。
+          - 新增 GPU / iGPU 硬件详情，支持独显、Intel/AMD 核显与多 GPU 数据。
+          - GPU 型号自动精简，并过滤 Sensor Hub 等非显卡设备，减少误识别。
+          - 显示 GPU 使用率与显存/共享内存；无 GPU 节点自动隐藏相关项目。
+          - 从服务器详情面板移除延迟图；首页点击延迟区域的独立延迟/丢包弹窗保持不变。
+          - 新增按月流量周期计算，支持全局 `trafficResetDay`（1～28）。
+          - 支持节点标签 `traffic-reset:13` 等形式覆盖单台服务器的流量重置日。
+          - 保留自选延迟、丢包状态条、TCP/UDP 连接数、剩余价值和访问 IP 等现有功能。
+
+          ### 安装
+          下载 `komari-theme-tasogare-gpu-2.2.0-komari.zip`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
+          EOF
+
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" --clobber
+            echo "Release $TAG already exists; keeping the published asset unchanged."
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v2.2.0 test build" \
-              --prerelease \
-              --notes "Komari Tasogare v2.2.0 test build: GPU/iGPU detail fixes, full CPU model, billing-cycle traffic calculation, and node-detail latency chart removed. Homepage latency-area popup remains unchanged."
+              --title "v2.2.0 — GPU/iGPU & Traffic Cycle" \
+              --notes-file release-notes.md
+          fi
+
+          if [ "$TAG" = "v2.2.0" ]; then
+            gh release delete "v2.2.0-test" --cleanup-tag -y >/dev/null 2>&1 || true
           fi
