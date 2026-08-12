@@ -2,7 +2,7 @@
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 
-const output = "komari-theme-tasogare-latency-2.1.0-komari.zip";
+const output = "komari-theme-tasogare-gpu-2.2.0-komari.zip";
 
 for (const file of ["preview.png", "komari-theme.json", "dist/index.html"]) {
   if (!existsSync(file)) {
