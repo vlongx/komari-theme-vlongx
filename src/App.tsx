@@ -79,7 +79,6 @@ export default function App() {
     getPingTasks().then(setPingTasks).catch(() => {});
   }, []);
 
-  // realtime poll, 2s cadence, skips when tab hidden
   useEffect(() => {
     let stop = false;
     let timer: number | undefined;
@@ -112,7 +111,6 @@ export default function App() {
   const settings = (pub?.theme_settings ?? {}) as Record<string, unknown>;
   const cfgDay = (settings.wallpaperDay as string) || "";
   const cfgNight = (settings.wallpaperNight as string) || "";
-  // fall back to the other mode's wallpaper, then to bundled defaults
   const wallDay = cfgDay || cfgNight || DEFAULT_WALL_DAY;
   const wallNight = cfgNight || cfgDay || DEFAULT_WALL_NIGHT;
   const showLatencySetting = settings.showLatencyOnCard ?? settings.showTcpingOnCard;
@@ -122,6 +120,10 @@ export default function App() {
   const visitorIpSetting = settings.showVisitorIp;
   const showVisitorIp = visitorIpSetting !== false && visitorIpSetting !== "false";
   const visitorIpEndpoint = (settings.visitorIpEndpoint as string) || "";
+  const resetDayRaw = Number(settings.trafficResetDay ?? 1);
+  const trafficResetDay = Number.isFinite(resetDayRaw)
+    ? Math.max(1, Math.min(28, Math.round(resetDayRaw)))
+    : 1;
   const themeLatencySelections = useMemo(
     () => parseThemeSelections(settings.latencyDefaultTasks, settings.latencyDefaultAliases, pingTasks),
     [settings.latencyDefaultTasks, settings.latencyDefaultAliases, pingTasks],
@@ -183,7 +185,6 @@ export default function App() {
       <Background mode={mode} wallpaperDay={wallDay} wallpaperNight={wallNight} />
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-10">
-        {/* header */}
         <header className="flex items-center gap-3 py-5">
           <h1 className="text-[22px] font-bold tracking-tight flex-1">
             {pub?.sitename || "Komari"}
@@ -209,7 +210,6 @@ export default function App() {
             aria-label="toggle theme"
             title={mode === "day" ? "☀ → 🌙" : "🌙 → ☀"}
           >
-            {/* key remount replays the pop-in on every toggle */}
             <span key={mode} className="mode-pop">
               {mode === "day" ? "☀️" : "🌙"}
             </span>
@@ -218,7 +218,6 @@ export default function App() {
 
         <StatsBar nodes={nodes.filter((n) => !n.hidden)} latest={latest} />
 
-        {/* search + groups */}
         <div className="flex items-center gap-2 mt-4 mb-4 flex-wrap">
           <input
             value={query}
@@ -260,7 +259,6 @@ export default function App() {
           </span>
         </div>
 
-        {/* card grid */}
         {shown.length === 0 && nodes.length > 0 && (
           <div className="text-center text-dim py-20 text-[14px]">{t("empty")}</div>
         )}
@@ -274,6 +272,7 @@ export default function App() {
               showLatency={showLatency}
               latencySelections={resolvedLatencySelections}
               allLatencyTasks={resolvedAllLatencyTasks}
+              trafficResetDay={trafficResetDay}
               onClick={() => setSelected(n)}
             />
           ))}
