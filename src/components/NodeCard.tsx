@@ -123,8 +123,11 @@ function cumulativeDelta(records: LoadRecord[], key: "net_total_up" | "net_total
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
   if (sorted.length === 0) return 0;
 
-  let baselineIndex = sorted.findLastIndex((r) => new Date(r.time).getTime() <= startMs);
-  if (baselineIndex < 0) baselineIndex = 0;
+  let baselineIndex = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (new Date(sorted[i].time).getTime() <= startMs) baselineIndex = i;
+    else break;
+  }
   let previous = Math.max(0, Number(sorted[baselineIndex][key]) || 0);
   let total = 0;
 
