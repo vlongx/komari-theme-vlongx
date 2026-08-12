@@ -68,6 +68,7 @@ export interface PublicInfo {
 export interface LoadRecord {
   time: string;
   cpu: number;
+  gpu?: number;
   ram: number;
   ram_total: number;
   swap: number;
@@ -80,6 +81,25 @@ export interface LoadRecord {
   connections: number;
   connections_udp: number;
   process: number;
+}
+
+export interface GPUDeviceInfo {
+  name: string;
+  memory_total: number;
+  memory_used: number;
+  utilization: number;
+  temperature: number;
+}
+
+export interface GPUDetailReport {
+  count: number;
+  average_usage: number;
+  detailed_info: GPUDeviceInfo[];
+}
+
+export interface RecentNodeReport {
+  updated_at?: string;
+  gpu?: GPUDetailReport | null;
 }
 
 export interface PingTask {
@@ -113,6 +133,8 @@ export const getRecords = (uuid: string, hours: number) =>
   getJSON<{ count: number; records: LoadRecord[] }>(
     `/api/records/load?uuid=${uuid}&hours=${hours}`,
   );
+export const getRecentReports = (uuid: string) =>
+  getJSON<RecentNodeReport[]>(`/api/recent/${encodeURIComponent(uuid)}`);
 export const getPingTasks = () => getJSON<PingTask[]>("/api/task/ping");
 export const getPingRecords = (uuid: string, hours: number) =>
   getJSON<{ count: number; records: PingRecord[]; tasks?: PingTask[] }>(
