@@ -27,7 +27,7 @@ export interface LatestStatus {
   client: string;
   time: string;
   cpu: number; // percent 0-100
-  gpu: number; // percent 0-100, averaged by the agent when multiple GPUs exist
+  gpu: number;
   ram: number;
   ram_total: number;
   swap: number;
@@ -78,6 +78,10 @@ export interface LoadRecord {
   disk_total: number;
   net_in: number;
   net_out: number;
+  net_total_up?: number;
+  net_total_down?: number;
+  traffic_up?: number;
+  traffic_down?: number;
   connections: number;
   connections_udp: number;
   process: number;
