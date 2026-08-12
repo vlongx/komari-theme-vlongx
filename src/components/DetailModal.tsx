@@ -3,7 +3,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -11,12 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { GPUDeviceHistory, LatestStatus, LoadRecord, NodeInfo, PingRecord, PingTask } from "../lib/api";
-import { getPingRecords, getPingTasks, getRecords } from "../lib/api";
+import type { GPUDeviceHistory, LatestStatus, LoadRecord, NodeInfo } from "../lib/api";
+import { getRecords } from "../lib/api";
 import { daysUntil, fmtBytes, fmtDate, fmtPercent, fmtSpeed, fmtTime, fmtUptime } from "../lib/format";
 import { fmtCycle, fmtDaysLeft, t } from "../lib/i18n";
 import { osIcon } from "../lib/osIcon";
-import { lossColor, pingColor, pingFace } from "../lib/ping";
 import Flag from "./Flag";
 
 interface Props {
@@ -39,8 +37,6 @@ const RANGES = [
   { label: "24h", hours: 24 },
   { label: "7d", hours: 168 },
 ];
-
-const PING_COLORS = ["#818cf8", "#f472b6", "#2dd4bf", "#fbbf24", "#fb7185", "#a3e635"];
 
 function GlassTooltip({
   active,
@@ -90,98 +86,46 @@ function MetaItem({ k, v, wrap = false }: { k: string; v: string; wrap?: boolean
   );
 }
 
-function PingTooltip({
-  active,
-  payload,
-  label,
-  loss,
-}: {
-  active?: boolean;
-  payload?: { name: string; value: number; color: string; dataKey?: string }[];
-  label?: string;
-  loss: Map<number, number>;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="glass-strong rounded-xl px-3 py-2 text-[12px]">
-      <div className="text-dim mb-1">{label}</div>
-      {payload.map((p) => {
-        const taskId = Number(String(p.dataKey).replace("t", ""));
-        const l = loss.get(taskId) ?? 0;
-        return (
-          <div key={p.name} className="flex items-center gap-1.5 num">
-            <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-            {p.name}: <b>{Math.round(p.value)} ms</b>
-            <span style={{ color: lossColor(l) || "var(--text-dim)" }}> · {t("loss")} {l}%</span>
-          </div>
-        );
-      })}
-    </div>
-  );
+const GPU_HINT = /(graphics|geforce|radeon|\bgpu\b|\buhd\b|\biris\b|\barc\b|quadro|tesla|\brtx\b|\bgtx\b)/i;
+const GPU_REJECT = /(sensor hub|management engine|ethernet|wireless|audio controller|usb controller|sata controller)/i;
+
+function conciseGpuName(raw?: string | null): string {
+  const original = (raw || "").replace(/\s+/g, " ").trim();
+  if (!original || /^(?:-|0|none|null|unknown|n\/a)$/i.test(original)) return "";
+  if (GPU_REJECT.test(original)) return "";
+
+  const brackets = Array.from(original.matchAll(/\[([^\]]+)\]/g)).map((m) => m[1].trim());
+  const bracketModel = [...brackets].reverse().find((part) => GPU_HINT.test(part));
+  let model = bracketModel || original;
+  if (!GPU_HINT.test(model)) return "";
+
+  model = model
+    .replace(/\bIntel Corporation\b/gi, "Intel")
+    .replace(/\bNVIDIA Corporation\b/gi, "NVIDIA")
+    .replace(/\bAdvanced Micro Devices,? Inc\.?\b/gi, "AMD")
+    .replace(/\bAMD\/ATI\b/gi, "AMD")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (bracketModel) {
+    if (/Intel/i.test(original) && !/^Intel\b/i.test(model)) model = `Intel ${model}`;
+    else if (/NVIDIA/i.test(original) && !/^NVIDIA\b/i.test(model)) model = `NVIDIA ${model}`;
+    else if (/(AMD|Advanced Micro Devices|ATI)/i.test(original) && !/^AMD\b/i.test(model)) model = `AMD ${model}`;
+  }
+
+  return model;
 }
 
-function PingLegend({
-  tasks,
-  avg,
-  loss,
-}: {
-  tasks: PingTask[];
-  avg: Map<number, number>;
-  loss: Map<number, number>;
-}) {
-  return (
-    <div className="flex flex-wrap justify-center gap-x-5 gap-y-1" style={{ paddingTop: 4 }}>
-      {tasks.map((task, i) => {
-        const a = avg.get(task.id) ?? 0;
-        const l = loss.get(task.id) ?? 0;
-        const face = a > 0 ? pingFace(a, l) : "(×ω×)";
-        const faceColor = a > 0 ? pingColor(a, l) : "#fb7185";
-        const msColor = a > 0 ? pingColor(a) : "#fb7185";
-        return (
-          <span key={task.id} className="relative group inline-flex flex-col items-center cursor-default">
-            <span className="flex items-center gap-1.5 text-[12.5px]">
-              <span
-                className="inline-block w-3.5 h-[2px] rounded-full"
-                style={{ background: PING_COLORS[i % PING_COLORS.length] }}
-              />
-              <span>{task.name}</span>
-              <span style={{ color: faceColor }}>{face}</span>
-            </span>
-            <span className="flex items-center gap-1.5 text-[10.5px] num">
-              <span style={{ color: msColor }}>
-                {a > 0 ? `${a}ms` : t("ping_timeout")}
-              </span>
-              <span style={{ color: lossColor(l) || "var(--text-dim)" }}>
-                {l}%
-              </span>
-            </span>
-            <span className="hidden group-hover:flex flex-col gap-1 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 glass-strong rounded-xl px-3 py-2 whitespace-nowrap text-left text-[11.5px]">
-              <span className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: faceColor }} />
-                <span style={{ color: "var(--text)" }}>{task.name}</span>
-                <span className="ml-auto font-medium" style={{ color: msColor }}>
-                  {a > 0 ? `${a}ms` : t("ping_timeout")}
-                </span>
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ opacity: 0 }} />
-                <span style={{ color: lossColor(l) || "var(--text-dim)" }}>
-                  {t("loss")} {l}%
-                </span>
-              </span>
-            </span>
-          </span>
-        );
-      })}
-    </div>
-  );
+function latestGpuUsage(records: LoadRecord[]): number | null {
+  const sorted = [...records].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  const record = sorted.find((r) => typeof r.gpu === "number" && Number.isFinite(r.gpu));
+  return record?.gpu ?? null;
 }
 
 export default function DetailModal({ node, status, mode, onClose }: Props) {
   const [hours, setHours] = useState(6);
   const [records, setRecords] = useState<LoadRecord[] | null>(null);
   const [gpuHistories, setGpuHistories] = useState<Record<string, GPUDeviceHistory>>({});
-  const [pingData, setPingData] = useState<{ tasks: PingTask[]; records: PingRecord[] } | null>(null);
 
   const axis = mode === "day" ? "rgba(38,44,74,0.45)" : "rgba(233,236,255,0.45)";
   const grid = mode === "day" ? "rgba(38,44,74,0.10)" : "rgba(233,236,255,0.10)";
@@ -210,12 +154,6 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
         setRecords([]);
         setGpuHistories({});
       });
-    Promise.all([getPingTasks(), getPingRecords(node.uuid, hours)])
-      .then(([tasks, pr]) => {
-        if (gone) return;
-        setPingData({ tasks: pr.tasks?.length ? pr.tasks : tasks || [], records: pr.records || [] });
-      })
-      .catch(() => !gone && setPingData({ tasks: [], records: [] }));
     return () => {
       gone = true;
     };
@@ -223,36 +161,53 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
 
   const gpuDevices = useMemo<GPUDisplayDevice[]>(() => {
     const histories = Object.values(gpuHistories).sort((a, b) => a.device_index - b.device_index);
+    const globalUsage = latestGpuUsage(records || []);
+
     if (histories.length > 0) {
-      return histories.map((history) => {
-        const latest = [...(history.records || [])].sort(
-          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
-        )[0];
-        return {
-          name: history.device_name || latest?.device_name || node.gpu_name || t("gpu"),
-          utilization: latest && Number.isFinite(latest.utilization) ? latest.utilization : null,
-          memUsed: latest?.mem_used || 0,
-          memTotal: latest?.mem_total || 0,
-        };
+      const devices = histories
+        .map((history) => {
+          const latest = [...(history.records || [])].sort(
+            (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
+          )[0];
+          const name = conciseGpuName(history.device_name || latest?.device_name || node.gpu_name);
+          if (!name) return null;
+          return {
+            name,
+            utilization:
+              latest && Number.isFinite(latest.utilization)
+                ? latest.utilization
+                : histories.length === 1
+                  ? globalUsage
+                  : null,
+            memUsed: latest?.mem_used || 0,
+            memTotal: latest?.mem_total || 0,
+          } satisfies GPUDisplayDevice;
+        })
+        .filter((item): item is GPUDisplayDevice => item !== null);
+
+      const seen = new Set<string>();
+      return devices.filter((device) => {
+        if (seen.has(device.name)) return false;
+        seen.add(device.name);
+        return true;
       });
     }
-    const fallbackName = (node.gpu_name || "").trim();
+
+    const fallbackName = conciseGpuName(node.gpu_name);
     return fallbackName
-      ? [{ name: fallbackName, utilization: null, memUsed: 0, memTotal: 0 }]
+      ? [{ name: fallbackName, utilization: globalUsage, memUsed: 0, memTotal: 0 }]
       : [];
-  }, [gpuHistories, node.gpu_name]);
+  }, [gpuHistories, node.gpu_name, records]);
 
   const gpuNames = gpuDevices.map((g) => g.name).join(" · ");
-  const gpuUsage = gpuDevices
-    .map((g) => `${g.name}: ${g.utilization === null ? "—" : `${g.utilization.toFixed(1)}%`}`)
-    .join(" · ");
-  const gpuMemory = gpuDevices
-    .map((g) =>
-      g.memTotal > 0
-        ? `${g.name}: ${fmtBytes(g.memUsed)} / ${fmtBytes(g.memTotal)}`
-        : `${g.name}: ${t("sharedMemory")}`,
-    )
-    .join(" · ");
+  const gpuUsage = gpuDevices.length
+    ? gpuDevices.map((g) => (g.utilization === null ? "—" : `${g.utilization.toFixed(1)}%`)).join(" · ")
+    : "";
+  const gpuMemory = gpuDevices.length
+    ? gpuDevices
+        .map((g) => (g.memTotal > 0 ? `${fmtBytes(g.memUsed)} / ${fmtBytes(g.memTotal)}` : t("sharedMemory")))
+        .join(" · ")
+    : "";
 
   const loadData = useMemo(
     () =>
@@ -267,38 +222,6 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
         })),
     [records, hours, node.mem_total],
   );
-
-  const pingSeries = useMemo(() => {
-    if (!pingData || !pingData.records.length)
-      return { data: [], tasks: [] as PingTask[], loss: new Map<number, number>(), avg: new Map<number, number>() };
-    const sorted = [...pingData.records].sort(
-      (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
-    );
-    const byTime = new Map<string, Record<string, number | string>>();
-    const probes = new Map<number, { total: number; fail: number; sum: number; ok: number }>();
-    for (const r of sorted) {
-      let st = probes.get(r.task_id);
-      if (!st) probes.set(r.task_id, (st = { total: 0, fail: 0, sum: 0, ok: 0 }));
-      st.total++;
-      const key = fmtTime(r.time, hours);
-      if (!byTime.has(key)) byTime.set(key, { time: key });
-      if (r.value > 0) {
-        byTime.get(key)![`t${r.task_id}`] = r.value;
-        st.sum += r.value;
-        st.ok++;
-      } else {
-        st.fail++;
-      }
-    }
-    const tasks = (pingData.tasks || []).filter((tk) => probes.has(tk.id));
-    const loss = new Map<number, number>();
-    const avg = new Map<number, number>();
-    for (const [id, st] of probes) {
-      loss.set(id, Math.round((st.fail / st.total) * 100));
-      avg.set(id, st.ok > 0 ? Math.round(st.sum / st.ok) : 0);
-    }
-    return { data: Array.from(byTime.values()), tasks, loss, avg };
-  }, [pingData, hours]);
 
   const pct = (v: number) => `${v.toFixed(1)}%`;
 
@@ -340,8 +263,8 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
           {gpuDevices.length > 0 && (
             <>
               <MetaItem k={t("gpu")} v={gpuNames} wrap />
-              <MetaItem k={t("gpuUsage")} v={gpuUsage} wrap />
-              <MetaItem k={t("gpuMemory")} v={gpuMemory} wrap />
+              <MetaItem k={t("gpuUsage")} v={gpuUsage} />
+              <MetaItem k={t("gpuMemory")} v={gpuMemory} />
             </>
           )}
           {node.price !== 0 && (
@@ -423,55 +346,20 @@ export default function DetailModal({ node, status, mode, onClose }: Props) {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title={t("netChart")}>
-              <ResponsiveContainer>
-                <LineChart data={loadData} margin={{ top: 4, right: 4, left: -6, bottom: 0 }}>
-                  <CartesianGrid stroke={grid} vertical={false} />
-                  <XAxis dataKey="time" tick={{ fill: axis, fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={38} />
-                  <YAxis tick={{ fill: axis, fontSize: 10 }} tickLine={false} axisLine={false} width={52} tickFormatter={(v: number) => fmtBytes(v)} />
-                  <Tooltip content={<GlassTooltip fmt={fmtSpeed} />} />
-                  <Line type="monotone" dataKey="up" name={`↑ ${t("upload")}`} stroke="#fb7185" strokeWidth={2} dot={false} isAnimationActive={false} />
-                  <Line type="monotone" dataKey="down" name={`↓ ${t("download")}`} stroke="#2dd4bf" strokeWidth={2} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title={t("latency")}>
-              {pingSeries.data.length && pingSeries.tasks.length ? (
+            <div className="sm:col-span-2">
+              <ChartCard title={t("netChart")}>
                 <ResponsiveContainer>
-                  <LineChart data={pingSeries.data} margin={{ top: 4, right: 4, left: -14, bottom: 0 }}>
+                  <LineChart data={loadData} margin={{ top: 4, right: 4, left: -6, bottom: 0 }}>
                     <CartesianGrid stroke={grid} vertical={false} />
                     <XAxis dataKey="time" tick={{ fill: axis, fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={38} />
-                    <YAxis domain={[0, "auto"]} tick={{ fill: axis, fontSize: 10 }} tickLine={false} axisLine={false} width={38} tickFormatter={(v: number) => `${v}`} />
-                    <Tooltip content={<PingTooltip loss={pingSeries.loss} />} />
-                    <Legend
-                      content={
-                        <PingLegend
-                          tasks={pingSeries.tasks}
-                          avg={pingSeries.avg}
-                          loss={pingSeries.loss}
-                        />
-                      }
-                    />
-                    {pingSeries.tasks.map((task, i) => (
-                      <Line
-                        key={task.id}
-                        type="monotone"
-                        dataKey={`t${task.id}`}
-                        name={task.name}
-                        stroke={PING_COLORS[i % PING_COLORS.length]}
-                        strokeWidth={2}
-                        dot={false}
-                        connectNulls
-                        isAnimationActive={false}
-                      />
-                    ))}
+                    <YAxis tick={{ fill: axis, fontSize: 10 }} tickLine={false} axisLine={false} width={52} tickFormatter={(v: number) => fmtBytes(v)} />
+                    <Tooltip content={<GlassTooltip fmt={fmtSpeed} />} />
+                    <Line type="monotone" dataKey="up" name={`↑ ${t("upload")}`} stroke="#fb7185" strokeWidth={2} dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="down" name={`↓ ${t("download")}`} stroke="#2dd4bf" strokeWidth={2} dot={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-full grid place-items-center text-dim text-[13px]">{t("noPingTasks")}</div>
-              )}
-            </ChartCard>
+              </ChartCard>
+            </div>
           </div>
         )}
       </div>
