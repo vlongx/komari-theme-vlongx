@@ -1,4 +1,6 @@
-import type { LatestStatus, NodeInfo } from "../lib/api";
+import { useEffect, useState } from "react";
+import type { LatestStatus, LoadRecord, NodeInfo } from "../lib/api";
+import { getRecords } from "../lib/api";
 import { daysUntil, fmtBytes, fmtPercent, fmtSpeed, fmtUptime, shortOs, trafficUsed } from "../lib/format";
 import { fmtDaysLeft, t } from "../lib/i18n";
 import { osIcon } from "../lib/osIcon";
@@ -13,10 +15,10 @@ interface Props {
   showLatency: boolean;
   latencySelections: ResolvedLatencySelection[];
   allLatencyTasks: ResolvedLatencySelection[];
+  trafficResetDay: number;
   onClick: () => void;
 }
 
-// subtle 3D tilt, mouse-only
 const canTilt =
   typeof window !== "undefined" &&
   window.matchMedia("(pointer: fine)").matches &&
@@ -94,6 +96,106 @@ function ConnectionsRow({ tcp, udp }: { tcp: number; udp: number }) {
   );
 }
 
+function normalizedResetDay(tags: string, fallback: number): number {
+  const match = (tags || "").match(/(?:^|;)\s*traffic-reset\s*:\s*(\d{1,2})\s*(?:;|$)/i);
+  const value = match ? Number(match[1]) : Number(fallback);
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(28, Math.round(value)));
+}
+
+function cycleStart(resetDay: number): Date {
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth();
+  if (now.getDate() < resetDay) {
+    month -= 1;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
+  return new Date(year, month, resetDay, 0, 0, 0, 0);
+}
+
+function cumulativeDelta(records: LoadRecord[], key: "net_total_up" | "net_total_down", startMs: number): number {
+  const sorted = [...records]
+    .filter((r) => Number.isFinite(Number(r[key])))
+    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+  if (sorted.length === 0) return 0;
+
+  let baselineIndex = sorted.findLastIndex((r) => new Date(r.time).getTime() <= startMs);
+  if (baselineIndex < 0) baselineIndex = 0;
+  let previous = Math.max(0, Number(sorted[baselineIndex][key]) || 0);
+  let total = 0;
+
+  for (let i = baselineIndex + 1; i < sorted.length; i++) {
+    if (new Date(sorted[i].time).getTime() < startMs) continue;
+    const current = Math.max(0, Number(sorted[i][key]) || 0);
+    total += current >= previous ? current - previous : current;
+    previous = current;
+  }
+  return total;
+}
+
+function cycleTrafficFromRecords(records: LoadRecord[], resetDay: number, type: string): number | null {
+  const start = cycleStart(resetDay);
+  const startMs = start.getTime();
+  const inCycle = records.filter((r) => new Date(r.time).getTime() >= startMs);
+
+  const hasDeltaTraffic = inCycle.some(
+    (r) => Number(r.traffic_up || 0) > 0 || Number(r.traffic_down || 0) > 0,
+  );
+  if (hasDeltaTraffic) {
+    const up = inCycle.reduce((sum, r) => sum + Math.max(0, Number(r.traffic_up || 0)), 0);
+    const down = inCycle.reduce((sum, r) => sum + Math.max(0, Number(r.traffic_down || 0)), 0);
+    return trafficUsed(up, down, type);
+  }
+
+  const hasCounters = records.some(
+    (r) => Number.isFinite(Number(r.net_total_up)) || Number.isFinite(Number(r.net_total_down)),
+  );
+  if (!hasCounters) return null;
+  return trafficUsed(
+    cumulativeDelta(records, "net_total_up", startMs),
+    cumulativeDelta(records, "net_total_down", startMs),
+    type,
+  );
+}
+
+function useCycleTraffic(node: NodeInfo, index: number, defaultResetDay: number): number | null {
+  const [value, setValue] = useState<number | null>(null);
+  const resetDay = normalizedResetDay(node.tags, defaultResetDay);
+
+  useEffect(() => {
+    if (!node.traffic_limit) {
+      setValue(null);
+      return;
+    }
+    let stopped = false;
+    let timer: number | undefined;
+
+    const load = async () => {
+      try {
+        const start = cycleStart(resetDay);
+        const hours = Math.min(24 * 35, Math.max(1, Math.ceil((Date.now() - start.getTime()) / 3600000) + 3));
+        const response = await getRecords(node.uuid, hours);
+        if (!stopped) setValue(cycleTrafficFromRecords(response.records || [], resetDay, node.traffic_limit_type));
+      } catch {
+        if (!stopped) setValue(null);
+      }
+      if (!stopped) timer = window.setTimeout(load, 5 * 60 * 1000);
+    };
+
+    timer = window.setTimeout(load, Math.min(250 + index * 80, 2500));
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [node.uuid, node.tags, node.traffic_limit, node.traffic_limit_type, index, resetDay]);
+
+  return value;
+}
+
 export default function NodeCard({
   node,
   status,
@@ -101,6 +203,7 @@ export default function NodeCard({
   showLatency,
   latencySelections,
   allLatencyTasks,
+  trafficResetDay,
   onClick,
 }: Props) {
   const online = !!status?.online;
@@ -109,7 +212,9 @@ export default function NodeCard({
   const diskPct = status ? fmtPercent(status.disk, status.disk_total || node.disk_total) : 0;
 
   const trafficLimit = node.traffic_limit || 0;
-  const trafficUse = status ? trafficUsed(status.net_total_up, status.net_total_down, node.traffic_limit_type) : 0;
+  const cycleTraffic = useCycleTraffic(node, index, trafficResetDay);
+  const rawTraffic = status ? trafficUsed(status.net_total_up, status.net_total_down, node.traffic_limit_type) : 0;
+  const trafficUse = cycleTraffic ?? rawTraffic;
   const trafficPct = trafficLimit > 0 ? Math.min(100, (trafficUse / trafficLimit) * 100) : 0;
   const trafficStyle = trafficPct >= 90 ? GRADS.trafficHot : GRADS.traffic;
 
@@ -119,7 +224,7 @@ export default function NodeCard({
   const tags = (node.tags || "")
     .split(";")
     .map((s) => s.trim())
-    .filter(Boolean)
+    .filter((s) => Boolean(s) && !/^traffic-reset\s*:/i.test(s))
     .slice(0, 3);
 
   return (
@@ -130,7 +235,6 @@ export default function NodeCard({
       className={`glass rounded-[20px] p-4 text-left w-full card-hover rise cursor-pointer ${online ? "" : "offline-card"}`}
       style={{ animationDelay: `${Math.min(index * 55, 600)}ms` }}
     >
-      {/* header */}
       <div className="flex items-center gap-2.5 mb-3.5">
         <Flag region={node.region} size={24} />
         <div className="flex-1 min-w-0">
@@ -155,7 +259,6 @@ export default function NodeCard({
         <span className="text-[11px] text-dim">{online ? t("online") : t("offline")}</span>
       </div>
 
-      {/* resource bars */}
       <div className="flex flex-col gap-2.5">
         <Bar label={t("cpu")} pct={online ? cpu : 0} grad={GRADS.cpu.grad} color={GRADS.cpu.color} />
         <Bar
@@ -183,12 +286,10 @@ export default function NodeCard({
         )}
       </div>
 
-      {/* TCP / UDP connection counts sit directly below traffic */}
       {online && status && (
         <ConnectionsRow tcp={status.connections} udp={status.connections_udp} />
       )}
 
-      {/* User-selected exact latency tasks follow the resource metrics. */}
       {showLatency && online && (
         <LatencySelectionPanel
           uuid={node.uuid}
@@ -200,7 +301,6 @@ export default function NodeCard({
         />
       )}
 
-      {/* speed / uptime are intentionally placed below TCPing */}
       <div className="flex items-center justify-between mt-3.5 text-[12px] num">
         {online && status ? (
           <>
