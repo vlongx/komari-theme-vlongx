@@ -24,7 +24,7 @@ const canTilt =
   window.matchMedia("(pointer: fine)").matches &&
   !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function tiltMove(e: React.MouseEvent<HTMLButtonElement>) {
+function tiltMove(e: React.MouseEvent<HTMLElement>) {
   if (!canTilt) return;
   const r = e.currentTarget.getBoundingClientRect();
   const px = (e.clientX - r.left) / r.width - 0.5;
@@ -32,7 +32,7 @@ function tiltMove(e: React.MouseEvent<HTMLButtonElement>) {
   e.currentTarget.style.transform = `perspective(900px) rotateX(${(-py * 3.5).toFixed(2)}deg) rotateY(${(px * 4.5).toFixed(2)}deg) translateY(-4px)`;
 }
 
-function tiltLeave(e: React.MouseEvent<HTMLButtonElement>) {
+function tiltLeave(e: React.MouseEvent<HTMLElement>) {
   e.currentTarget.style.transform = "";
 }
 
@@ -231,11 +231,20 @@ export default function NodeCard({
     .slice(0, 3);
 
   return (
-    <button
+    <article
+      role="button"
+      tabIndex={0}
+      aria-label={node.name}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       onMouseMove={tiltMove}
       onMouseLeave={tiltLeave}
-      className={`glass rounded-[20px] p-4 text-left w-full card-hover rise cursor-pointer ${online ? "" : "offline-card"}`}
+      className={`node-card glass rounded-[20px] p-4 text-left w-full card-hover rise cursor-pointer ${online ? "" : "offline-card"}`}
       style={{ animationDelay: `${Math.min(index * 55, 600)}ms` }}
     >
       <div className="flex items-center gap-2.5 mb-3.5">
@@ -304,7 +313,7 @@ export default function NodeCard({
         />
       )}
 
-      <div className="flex items-center justify-between mt-3.5 text-[12px] num">
+      <div className="node-card-footer flex items-center justify-between text-[12px] num">
         {online && status ? (
           <>
             <span>
@@ -319,7 +328,7 @@ export default function NodeCard({
       </div>
 
       {(tags.length > 0 || expSoon) && (
-        <div className="flex gap-1.5 mt-2.5 flex-wrap">
+        <div className="node-card-tags flex gap-1.5 mt-2.5 flex-wrap">
           {expSoon && (
             <span
               className="text-[10.5px] px-2 py-0.5 rounded-full font-medium"
@@ -343,6 +352,6 @@ export default function NodeCard({
           ))}
         </div>
       )}
-    </button>
+    </article>
   );
 }

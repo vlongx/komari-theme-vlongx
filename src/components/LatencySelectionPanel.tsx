@@ -351,7 +351,7 @@ function MetricColumn({
                 ) : (
                   <span className="sr-only">{item.label} {item.typeLabel}</span>
                 )}
-                <span className="ml-auto text-[12px] font-semibold shrink-0" style={{ color: valueColor }}>
+                <span className="tcping-card-value ml-auto text-[12px] font-semibold shrink-0" style={{ color: valueColor }}>
                   {value === null ? "-" : metric === "latency" ? `${Math.round(value)} ms` : `${value.toFixed(1)}%`}
                 </span>
               </div>
@@ -751,7 +751,7 @@ export default function LatencySelectionPanel({
         <span className="tcping-panel-title">{cardTitle}</span>
         <span className="tcping-panel-window">4H · {applicableSelections.length}/3</span>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="tcping-metrics-grid">
         <MetricColumn metric="latency" live={cardLive} history={cardData.history} selections={applicableSelections} />
         <MetricColumn metric="loss" live={cardLive} history={cardData.history} selections={applicableSelections} />
       </div>

@@ -205,6 +205,28 @@ body {
     transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.35s ease;
 }
+
+/* Keep the card footer inside the card and separate it from the latency panel.
+   Using an article also avoids nesting a second interactive control in a button. */
+.node-card {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  flex-direction: column;
+}
+.node-card > * {
+  min-width: 0;
+}
+.node-card-footer {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 11px;
+  border-top: 1px solid var(--track);
+}
+.node-card-tags {
+  width: 100%;
+}
 .card-hover:hover {
   transform: translateY(-4px);
 }
@@ -286,6 +308,12 @@ input.search {
   justify-content: space-between;
   margin-bottom: 9px;
 }
+.tcping-metrics-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(76px, 1fr);
+  gap: 16px;
+}
 .tcping-panel-title {
   font-size: 12px;
   font-weight: 600;
@@ -311,6 +339,13 @@ input.search {
   align-items: baseline;
   gap: 5px;
   line-height: 1;
+}
+.tcping-card-value {
+  max-width: 50%;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tcping-card-metric-line.is-value-only {
   justify-content: flex-end;
@@ -347,6 +382,19 @@ input.search {
   flex: 1 1 0%;
   min-width: 0;
   border-radius: 2px;
+}
+
+@media (max-width: 420px) {
+  .tcping-metrics-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(72px, 0.85fr);
+    gap: 10px;
+  }
+  .tcping-card-metric-line {
+    gap: 4px;
+  }
+  .tcping-history {
+    gap: 1.5px;
+  }
 }
 
 /* Click-to-open latency detail. The dialog is portaled to body so it is never
