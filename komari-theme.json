@@ -2,7 +2,7 @@
   "name": "Tasogare 黄昏 自选延迟 GPU",
   "short": "tasogare-tcping",
   "description": "Tasogare glassmorphism theme with configurable latency cards, click-to-open all-task latency details, GPU/iGPU hardware details, monthly traffic-cycle accounting, packet-loss event bars, TCP/UDP counters, remaining value, and visitor IP footer. 基于 Tasogare 黄昏：首页自选延迟、GPU/核显详情、按月流量周期、点击查看全部任务、丢包竖条、连接数、剩余价值与底部访问 IP。",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "author": "tryingmeow (carrier latency/GPU/traffic modification by vlongx)",
   "url": "https://github.com/vlongx/komari-theme-vlongx",
   "preview": "preview.png",
