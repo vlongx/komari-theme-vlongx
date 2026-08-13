@@ -1,6 +1,12 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.1`
+当前版本：`v2.2.2`
+
+## v2.2.2 修复
+
+- 修复第三条 TCPing 历史点阵紧贴底部网速分隔线的问题。
+- 在 TCPing 区域末尾加入固定安全间距，确保最后一行点阵完整显示。
+- 底部网速和在线时长状态栏不再参与压缩，窄屏及高 DPI 下保持稳定间距。
 
 ## v2.2.1 修复
 
@@ -90,6 +96,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.1-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.2-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。

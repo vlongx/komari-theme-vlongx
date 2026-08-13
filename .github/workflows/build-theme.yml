@@ -53,11 +53,14 @@ jobs:
         shell: bash
         run: |
           cat > release-notes.md <<'EOF'
-          ## Tasogare 黄昏 自选延迟 GPU v2.2.1
+          ## Tasogare 黄昏 自选延迟 GPU v2.2.2
 
           基于 Tasogare v1.2.2 整合并增强。
 
           ### 本次更新
+          - 修复第三条 TCPing 历史点阵紧贴底部状态栏分隔线的问题。
+          - 在 TCPing 区域末尾增加固定安全间距，确保最后一行点阵完整显示。
+          - 固定底部网速/在线时长状态栏的伸缩行为，避免窄屏布局将其向上挤压。
           - 修复窄卡片与高 DPI 显示下 TCPing、实时网速、在线时长和标签的边界错位。
           - 节点卡片使用弹性纵向布局，底部状态栏始终留在卡片内部并增加清晰分隔线。
           - 延迟和丢包两列采用安全的最小宽度，过长数值自动收敛，避免互相挤压或溢出。
@@ -72,7 +75,7 @@ jobs:
           - 保留自选延迟、丢包状态条、TCP/UDP 连接数、剩余价值和访问 IP 等现有功能。
 
           ### 安装
-          下载 `komari-theme-tasogare-gpu-2.2.1-komari.zip`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
+          下载 `komari-theme-tasogare-gpu-2.2.2-komari.zip`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
           EOF
 
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -80,10 +83,10 @@ jobs:
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v2.2.1 — Responsive TCPing Card Layout" \
+              --title "v2.2.2 — TCPing Footer Spacing" \
               --notes-file release-notes.md
           fi
 
-          if [ "$TAG" = "v2.2.1" ]; then
-            gh release delete "v2.2.1-test" --cleanup-tag -y >/dev/null 2>&1 || true
+          if [ "$TAG" = "v2.2.2" ]; then
+            gh release delete "v2.2.2-test" --cleanup-tag -y >/dev/null 2>&1 || true
           fi
