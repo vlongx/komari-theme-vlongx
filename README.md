@@ -1,6 +1,13 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.0`
+当前版本：`v2.2.1`
+
+## v2.2.1 修复
+
+- 修复窄卡片与高 DPI 显示下 TCPing、实时网速、在线时长和标签的边界错位。
+- 节点卡片改为弹性纵向布局，底部状态栏始终留在卡片内部。
+- 延迟和丢包两列增加安全的最小宽度与文本收敛规则，避免互相挤压或溢出。
+- 外层节点卡片改为键盘可访问的语义容器，避免嵌套按钮结构。
 
 本项目基于 [tryingmeow/komari-theme-tasogare](https://github.com/tryingmeow/komari-theme-tasogare) 修改。当前代码基线为 Tasogare `v1.2.2`，并保留本项目现有的自选延迟、丢包详情、连接数、剩余价值与访问 IP 等增强功能。
 
@@ -83,6 +90,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.0-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.1-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
