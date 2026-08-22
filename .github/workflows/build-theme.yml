@@ -49,33 +49,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
           ZIP: ${{ steps.meta.outputs.zip }}
         shell: bash
         run: |
-          cat > release-notes.md <<'EOF'
-          ## Tasogare 黄昏 自选延迟 GPU v2.2.2
+          cat > release-notes.md <<EOF
+          ## Tasogare 黄昏 自选延迟 GPU v${VERSION}
 
           基于 Tasogare v1.2.2 整合并增强。
 
           ### 本次更新
-          - 修复第三条 TCPing 历史点阵紧贴底部状态栏分隔线的问题。
-          - 在 TCPing 区域末尾增加固定安全间距，确保最后一行点阵完整显示。
-          - 固定底部网速/在线时长状态栏的伸缩行为，避免窄屏布局将其向上挤压。
-          - 修复窄卡片与高 DPI 显示下 TCPing、实时网速、在线时长和标签的边界错位。
-          - 节点卡片使用弹性纵向布局，底部状态栏始终留在卡片内部并增加清晰分隔线。
-          - 延迟和丢包两列采用安全的最小宽度，过长数值自动收敛，避免互相挤压或溢出。
-          - 节点卡片改为键盘可访问的语义容器，避免外层按钮嵌套 TCPing 按钮。
-          - CPU 型号在服务器详情中完整显示，不再截断。
-          - 新增 GPU / iGPU 硬件详情，支持独显、Intel/AMD 核显与多 GPU 数据。
-          - GPU 型号自动精简，并过滤 Sensor Hub 等非显卡设备，减少误识别。
-          - 显示 GPU 使用率与显存/共享内存；无 GPU 节点自动隐藏相关项目。
-          - 从服务器详情面板移除延迟图；首页点击延迟区域的独立延迟/丢包弹窗保持不变。
-          - 新增按月流量周期计算，支持全局 `trafficResetDay`（1～28）。
-          - 支持节点标签 `traffic-reset:13` 等形式覆盖单台服务器的流量重置日。
-          - 保留自选延迟、丢包状态条、TCP/UDP 连接数、剩余价值和访问 IP 等现有功能。
+          - 基于 v2.2.2 的 TCPing Footer Spacing 布局继续增强节点卡片底部信息区。
+          - 在底部实时上下行网速与在线时长之间新增服务器费用显示。
+          - 费用直接读取 Komari 节点的价格、币种与计费周期，例如 C\$40/月、\$5/月、€10/年。
+          - 未配置价格的节点自动隐藏费用，不额外占用底部空间。
+          - 保留 v2.2.2 的 TCPing 底部安全间距、窄屏布局和高 DPI 修复。
+          - 保留自选延迟、丢包状态条、TCP/UDP 连接数、剩余价值、GPU/iGPU、按月流量周期和访问 IP 等现有功能。
 
           ### 安装
-          下载 `komari-theme-tasogare-gpu-2.2.2-komari.zip`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
+          下载 \`${ZIP}\`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
           EOF
 
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -83,10 +75,6 @@ jobs:
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v2.2.2 — TCPing Footer Spacing" \
+              --title "v${VERSION} — Billing Footer" \
               --notes-file release-notes.md
-          fi
-
-          if [ "$TAG" = "v2.2.2" ]; then
-            gh release delete "v2.2.2-test" --cleanup-tag -y >/dev/null 2>&1 || true
           fi
