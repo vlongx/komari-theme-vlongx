@@ -1,8 +1,10 @@
 // Build the Komari theme zip: preview.png + komari-theme.json + dist/
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
-const output = "komari-theme-tasogare-gpu-2.2.2-komari.zip";
+const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+const output = `komari-theme-tasogare-gpu-${version}-komari.zip`;
 
 for (const file of ["preview.png", "komari-theme.json", "dist/index.html"]) {
   if (!existsSync(file)) {
