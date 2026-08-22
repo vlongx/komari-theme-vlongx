@@ -56,25 +56,29 @@ jobs:
           cat > release-notes.md <<EOF
           ## Tasogare 黄昏 自选延迟 GPU v${VERSION}
 
-          基于 Tasogare v1.2.2 整合并增强。
+          基于 Tasogare v1.2.2 整合并增强，版本继续保持 v${VERSION}。
 
           ### 本次更新
-          - 基于 v2.2.2 的 TCPing Footer Spacing 布局继续增强节点卡片底部信息区。
-          - 在底部实时上下行网速与在线时长之间新增服务器费用显示。
-          - 费用直接读取 Komari 节点的价格、币种与计费周期，例如 C\$40/月、\$5/月、€10/年。
-          - 未配置价格的节点自动隐藏费用，不额外占用底部空间。
-          - 保留 v2.2.2 的 TCPing 底部安全间距、窄屏布局和高 DPI 修复。
-          - 保留自选延迟、丢包状态条、TCP/UDP 连接数、剩余价值、GPU/iGPU、按月流量周期和访问 IP 等现有功能。
+          - 节点卡片右上角显示“在线 + 完整天数”，例如“在线 10天”，不再显示小时和时钟图标。
+          - 服务器费用移动到在线状态下方，直接读取 Komari 节点的价格、币种与计费周期。
+          - 不同节点按后台账单分别显示，例如 €17.99/月、€281.7/半年、\$25/年、免费/月，不使用固定金额。
+          - 支持常用货币代码转换为符号，并新增半年计费周期显示。
+          - 卡片底部只保留实时上传和下载速度；未配置价格的节点自动隐藏费用。
+          - 保留 TCPing 底部安全间距、窄屏和高 DPI 修复，以及 GPU/iGPU、流量周期、访问 IP 等现有功能。
 
           ### 安装
           下载 \`${ZIP}\`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
           EOF
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; keeping the published asset unchanged."
+            gh release edit "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "v${VERSION} — Header Billing Layout" \
+              --notes-file release-notes.md
+            gh release upload "$TAG" "$ZIP" --clobber
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v${VERSION} — Billing Footer" \
+              --title "v${VERSION} — Header Billing Layout" \
               --notes-file release-notes.md
           fi
