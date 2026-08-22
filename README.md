@@ -1,6 +1,14 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.2`
+当前版本：`v2.2.3`
+
+## v2.2.3 更新
+
+- 基于 `v2.2.2 — TCPing Footer Spacing` 继续扩展节点卡片底部信息区。
+- 在左侧实时上下行网速与右侧在线时长之间新增服务器费用显示。
+- 费用直接读取 Komari 节点的价格、币种与计费周期，例如 `C$40/月`、`$5/月`、`€10/年`。
+- 没有配置价格的节点自动隐藏费用，不额外占用底部空间。
+- 保留 v2.2.2 的 TCPing 底部安全间距、窄屏与高 DPI 修复。
 
 ## v2.2.2 修复
 
@@ -96,6 +104,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.2-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.3-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
