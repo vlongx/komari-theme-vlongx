@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LatestStatus, LoadRecord, NodeInfo } from "../lib/api";
 import { getRecords } from "../lib/api";
-import { daysUntil, fmtBytes, fmtPercent, fmtSpeed, fmtUptime, shortOs, trafficUsed } from "../lib/format";
+import { daysUntil, fmtBytes, fmtPercent, fmtSpeed, shortOs, trafficUsed } from "../lib/format";
 import { fmtCycle, fmtDaysLeft, t } from "../lib/i18n";
 import { osIcon } from "../lib/osIcon";
 import type { ResolvedLatencySelection } from "../lib/latencySelection";
@@ -42,6 +42,22 @@ const GRADS = {
   disk: { grad: "linear-gradient(90deg,#fbbf24,#fb923c)", color: "#f59e2b" },
   traffic: { grad: "linear-gradient(90deg,#38bdf8,#2dd4bf)", color: "#14b8c6" },
   trafficHot: { grad: "linear-gradient(90deg,#fb7185,#f43f5e)", color: "#f43f5e" },
+};
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  CNY: "¥",
+  RMB: "¥",
+  USD: "$",
+  US$: "$",
+  CAD: "C$",
+  "C$": "C$",
+  HKD: "HK$",
+  "HK$": "HK$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+  SGD: "S$",
+  AUD: "A$",
 };
 
 function Bar({
@@ -199,14 +215,24 @@ function useCycleTraffic(node: NodeInfo, index: number, defaultResetDay: number)
   return value;
 }
 
+function currencySymbol(currency: string): string {
+  const value = String(currency || "$").trim();
+  return CURRENCY_SYMBOLS[value.toUpperCase()] || value;
+}
+
 function billingText(node: NodeInfo): string | null {
   const price = Number(node.price);
   if (!Number.isFinite(price) || price === 0) return null;
-  if (price < 0) return t("free");
 
-  const cycle = Number(node.billing_cycle);
-  const amount = `${node.currency || "$"}${price}`;
-  return Number.isFinite(cycle) && cycle > 0 ? `${amount}/${fmtCycle(cycle)}` : amount;
+  const cycleDays = Number(node.billing_cycle);
+  const cycle = Number.isFinite(cycleDays) && cycleDays > 0 ? fmtCycle(Math.round(cycleDays)) : "";
+  const amount = price < 0 ? t("free") : `${currencySymbol(node.currency)}${price}`;
+  return cycle ? `${amount}/${cycle}` : amount;
+}
+
+function onlineDays(uptime: number | undefined): number {
+  const seconds = Math.max(0, Number(uptime) || 0);
+  return Math.floor(seconds / 86400);
 }
 
 export default function NodeCard({
@@ -241,10 +267,6 @@ export default function NodeCard({
     .filter((s) => Boolean(s) && !/^traffic-reset\s*:/i.test(s))
     .slice(0, 3);
 
-  const footerColumns = online && status && billing
-    ? "minmax(0, 1fr) auto minmax(0, 1fr)"
-    : "minmax(0, 1fr) auto";
-
   return (
     <article
       role="button"
@@ -262,7 +284,7 @@ export default function NodeCard({
       className={`node-card glass rounded-[20px] p-4 text-left w-full card-hover rise cursor-pointer ${online ? "" : "offline-card"}`}
       style={{ animationDelay: `${Math.min(index * 55, 600)}ms` }}
     >
-      <div className="flex items-center gap-2.5 mb-3.5">
+      <div className="flex items-start gap-2.5 mb-3.5">
         <Flag region={node.region} size={24} />
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-[15px] truncate leading-tight">{node.name}</div>
@@ -280,10 +302,24 @@ export default function NodeCard({
             </span>
           </div>
         </div>
-        <span
-          className={`w-2 h-2 rounded-full shrink-0 ${online ? "dot-online" : "dot-offline"}`}
-        />
-        <span className="text-[11px] text-dim">{online ? t("online") : t("offline")}</span>
+
+        <div className="shrink-0 flex flex-col items-end gap-1 text-[11px] text-dim num">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${online ? "dot-online" : "dot-offline"}`}
+            />
+            <span>
+              {online && status
+                ? `${t("online")} ${onlineDays(status.uptime)}${t("day")}`
+                : t("offline")}
+            </span>
+          </div>
+          {billing && (
+            <span className="max-w-[112px] truncate whitespace-nowrap" title={billing}>
+              {billing}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2.5">
@@ -328,40 +364,18 @@ export default function NodeCard({
         />
       )}
 
-      <div
-        className="node-card-footer grid items-center gap-2 text-[12px] num"
-        style={{ gridTemplateColumns: footerColumns }}
-      >
+      <div className="node-card-footer flex items-center gap-4 text-[12px] num">
         {online && status ? (
           <>
-            <span className="min-w-0 truncate whitespace-nowrap justify-self-start">
-              <span style={{ color: "#fb7185" }}>↑</span> {fmtSpeed(status.net_out)}{" "}
-              <span style={{ color: "#2dd4bf" }}>↓</span> {fmtSpeed(status.net_in)}
+            <span className="whitespace-nowrap">
+              <span style={{ color: "#fb7185" }}>↑</span> {fmtSpeed(status.net_out)}
             </span>
-            {billing && (
-              <span
-                className="text-dim font-medium whitespace-nowrap justify-self-center"
-                title={t("price")}
-              >
-                {billing}
-              </span>
-            )}
-            <span className="text-dim whitespace-nowrap justify-self-end">
-              ⏱ {fmtUptime(status.uptime, t)}
+            <span className="whitespace-nowrap">
+              <span style={{ color: "#2dd4bf" }}>↓</span> {fmtSpeed(status.net_in)}
             </span>
           </>
         ) : (
-          <>
-            <span className="min-w-0 truncate text-dim justify-self-start">{t("offline_hint")}</span>
-            {billing && (
-              <span
-                className="text-dim font-medium whitespace-nowrap justify-self-end"
-                title={t("price")}
-              >
-                {billing}
-              </span>
-            )}
-          </>
+          <span className="min-w-0 truncate text-dim">{t("offline_hint")}</span>
         )}
       </div>
 
