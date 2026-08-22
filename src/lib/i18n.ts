@@ -124,6 +124,7 @@ export const fmtDaysLeft = (d: number): string => (isZh ? `剩 ${d} 天` : `${d}
 // billing cycle in days → human label
 export const fmtCycle = (days: number): string => {
   if (days >= 360 && days <= 370) return isZh ? "年" : "yr";
+  if (days >= 178 && days <= 186) return isZh ? "半年" : "6mo";
   if (days >= 88 && days <= 92) return isZh ? "季" : "qtr";
   if (days >= 28 && days <= 31) return isZh ? "月" : "mo";
   return isZh ? `${days} 天` : `${days}d`;
