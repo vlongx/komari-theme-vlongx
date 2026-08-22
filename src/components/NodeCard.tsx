@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { LatestStatus, LoadRecord, NodeInfo } from "../lib/api";
 import { getRecords } from "../lib/api";
 import { daysUntil, fmtBytes, fmtPercent, fmtSpeed, fmtUptime, shortOs, trafficUsed } from "../lib/format";
-import { fmtDaysLeft, t } from "../lib/i18n";
+import { fmtCycle, fmtDaysLeft, t } from "../lib/i18n";
 import { osIcon } from "../lib/osIcon";
 import type { ResolvedLatencySelection } from "../lib/latencySelection";
 import Flag from "./Flag";
@@ -199,6 +199,16 @@ function useCycleTraffic(node: NodeInfo, index: number, defaultResetDay: number)
   return value;
 }
 
+function billingText(node: NodeInfo): string | null {
+  const price = Number(node.price);
+  if (!Number.isFinite(price) || price === 0) return null;
+  if (price < 0) return t("free");
+
+  const cycle = Number(node.billing_cycle);
+  const amount = `${node.currency || "$"}${price}`;
+  return Number.isFinite(cycle) && cycle > 0 ? `${amount}/${fmtCycle(cycle)}` : amount;
+}
+
 export default function NodeCard({
   node,
   status,
@@ -223,12 +233,17 @@ export default function NodeCard({
 
   const expDays = daysUntil(node.expired_at);
   const expSoon = expDays !== null && expDays <= 15;
+  const billing = billingText(node);
 
   const tags = (node.tags || "")
     .split(";")
     .map((s) => s.trim())
     .filter((s) => Boolean(s) && !/^traffic-reset\s*:/i.test(s))
     .slice(0, 3);
+
+  const footerColumns = online && status && billing
+    ? "minmax(0, 1fr) auto minmax(0, 1fr)"
+    : "minmax(0, 1fr) auto";
 
   return (
     <article
@@ -313,17 +328,40 @@ export default function NodeCard({
         />
       )}
 
-      <div className="node-card-footer flex items-center justify-between text-[12px] num">
+      <div
+        className="node-card-footer grid items-center gap-2 text-[12px] num"
+        style={{ gridTemplateColumns: footerColumns }}
+      >
         {online && status ? (
           <>
-            <span>
+            <span className="min-w-0 truncate whitespace-nowrap justify-self-start">
               <span style={{ color: "#fb7185" }}>↑</span> {fmtSpeed(status.net_out)}{" "}
               <span style={{ color: "#2dd4bf" }}>↓</span> {fmtSpeed(status.net_in)}
             </span>
-            <span className="text-dim">⏱ {fmtUptime(status.uptime, t)}</span>
+            {billing && (
+              <span
+                className="text-dim font-medium whitespace-nowrap justify-self-center"
+                title={t("price")}
+              >
+                {billing}
+              </span>
+            )}
+            <span className="text-dim whitespace-nowrap justify-self-end">
+              ⏱ {fmtUptime(status.uptime, t)}
+            </span>
           </>
         ) : (
-          <span className="text-dim">{t("offline_hint")}</span>
+          <>
+            <span className="min-w-0 truncate text-dim justify-self-start">{t("offline_hint")}</span>
+            {billing && (
+              <span
+                className="text-dim font-medium whitespace-nowrap justify-self-end"
+                title={t("price")}
+              >
+                {billing}
+              </span>
+            )}
+          </>
         )}
       </div>
 
