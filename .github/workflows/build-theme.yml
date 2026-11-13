@@ -86,6 +86,6 @@ jobs:
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v${VERSION} — Header Billing Layout" \
+              --title "v${VERSION} — Node Card Network Info" \
               --notes-file release-notes.md
           fi
