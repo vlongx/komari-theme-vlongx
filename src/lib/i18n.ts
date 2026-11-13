@@ -27,6 +27,16 @@ const zh = {
   displayCurrency: "显示货币",
   totalTraffic: "总流量",
   netSpeed: "实时网速",
+  realtimeSpeed: "实时速率",
+  cumulativeUpload: "累计上传",
+  cumulativeDownload: "累计下载",
+  onlineDuration: "在线时长",
+  trafficReset: "流量重置",
+  billingAmount: "费用金额",
+  cycleTraffic: "周期流量",
+  asn: "ASN",
+  ipGeo: "IPv4/IPv6",
+  cores: "核",
   nodes: "个节点",
   latency: "延迟",
   noPingTasks: "未配置延迟监控任务",
@@ -84,6 +94,16 @@ const en: typeof zh = {
   displayCurrency: "Display Currency",
   totalTraffic: "Total Traffic",
   netSpeed: "Speed",
+  realtimeSpeed: "Realtime",
+  cumulativeUpload: "Total Upload",
+  cumulativeDownload: "Total Download",
+  onlineDuration: "Uptime",
+  trafficReset: "Traffic Reset",
+  billingAmount: "Billing",
+  cycleTraffic: "Cycle Traffic",
+  asn: "ASN",
+  ipGeo: "IPv4/IPv6",
+  cores: "cores",
   nodes: "nodes",
   latency: "Latency",
   noPingTasks: "No ping tasks configured",
@@ -129,3 +149,7 @@ export const fmtCycle = (days: number): string => {
   if (days >= 28 && days <= 31) return isZh ? "月" : "mo";
   return isZh ? `${days} 天` : `${days}d`;
 };
+
+
+export const fmtMonthlyResetDay = (day: number): string =>
+  isZh ? `每月 ${day} 日` : `Day ${day} monthly`;

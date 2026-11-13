@@ -6,7 +6,11 @@ export interface NodeInfo {
   arch: string;
   cpu_cores: number;
   os: string;
+  kernel_version?: string;
   gpu_name: string;
+  ipv4?: string;
+  ipv6?: string;
+  public_remark?: string;
   region: string;
   mem_total: number;
   swap_total: number;

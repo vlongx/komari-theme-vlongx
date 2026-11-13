@@ -1,6 +1,26 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.3`
+当前版本：`v2.2.4`
+
+## v2.2.4 更新
+
+- 节点卡片按新的信息层级重新布局，顶部显示完整系统版本与架构。
+- 新增 ASN 与 IPv4/IPv6 归属信息，可通过节点标签 `asn:`、`ipv4:`、`ipv6:` 配置公开元数据。
+- ASN / IPv4 / IPv6 元数据标签只用于卡片显示，不再作为普通 Tag 重复展示。
+- 新增上行、实时总速率、下行三列，以及累计上传、累计下载、在线时长。
+- 新增到期时间、流量重置日、费用金额信息区。
+- CPU、内存、硬盘、周期流量改为 2×2 资源区，信息密度更接近服务器状态面板。
+- 保留 TCP/UDP、延迟/丢包、GPU/iGPU、流量周期以及现有点击弹窗逻辑。
+
+### ASN / IPv4 / IPv6 标签示例
+
+```text
+asn:AS3258 xTom Japan Corporation
+ipv4:Japan
+ipv6:Japan
+```
+
+> Komari 公共 `/api/nodes` 会隐藏节点真实 IPv4/IPv6，因此本主题使用节点 Tag 作为公开展示元数据来源。
 
 ## v2.2.3 更新
 
@@ -105,6 +125,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.3-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.4-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
