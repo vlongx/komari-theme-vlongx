@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { LatestStatus, LoadRecord, NodeInfo } from "../lib/api";
 import { getRecords } from "../lib/api";
-import { daysUntil, fmtBytes, fmtPercent, fmtSpeed, shortOs, trafficUsed } from "../lib/format";
-import { fmtCycle, fmtDaysLeft, t } from "../lib/i18n";
+import { daysUntil, fmtBytes, fmtDate, fmtPercent, fmtSpeed, fmtUptime, trafficUsed } from "../lib/format";
+import { fmtCycle, fmtDaysLeft, fmtMonthlyResetDay, t } from "../lib/i18n";
 import { osIcon } from "../lib/osIcon";
 import type { ResolvedLatencySelection } from "../lib/latencySelection";
 import Flag from "./Flag";
@@ -48,7 +48,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   CNY: "¥",
   RMB: "¥",
   USD: "$",
-  US$: "$",
+  "US$": "$",
   CAD: "C$",
   "C$": "C$",
   HKD: "HK$",
@@ -74,16 +74,43 @@ function Bar({
   sub?: string;
 }) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between mb-1">
-        <span className="text-[12px] text-dim">{label}</span>
-        <span className="text-[13px] font-semibold num" style={{ color }}>
+    <div className="min-w-0">
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <span className="text-[12px] font-semibold min-w-0 truncate">{label}</span>
+        <span className="text-[13px] font-semibold num shrink-0" style={{ color }}>
           {pct.toFixed(pct >= 10 ? 0 : 1)}%
-          {sub && <span className="text-dim font-normal text-[11px]"> · {sub}</span>}
         </span>
       </div>
       <div className="bar-track">
         <div className="bar-fill" style={{ width: `${pct}%`, background: grad }} />
+      </div>
+      {sub && (
+        <div className="text-[11px] text-dim num mt-1 truncate" title={sub}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] text-dim truncate">{label}</div>
+      <div
+        className="text-[13px] font-semibold num truncate mt-0.5"
+        style={color ? { color } : undefined}
+        title={value}
+      >
+        {value}
       </div>
     </div>
   );
@@ -112,6 +139,20 @@ function ConnectionsRow({ tcp, udp }: { tcp: number; udp: number }) {
   );
 }
 
+function metadataTag(tags: string, keys: string[]): string {
+  const wanted = new Set(keys.map((key) => key.toLowerCase()));
+  for (const part of (tags || "").split(";")) {
+    const item = part.trim();
+    const colon = item.indexOf(":");
+    if (colon <= 0) continue;
+    const key = item.slice(0, colon).trim().toLowerCase();
+    if (!wanted.has(key)) continue;
+    const value = item.slice(colon + 1).trim();
+    if (value) return value;
+  }
+  return "";
+}
+
 function normalizedResetDay(tags: string, fallback: number): number {
   const match = (tags || "").match(/(?:^|;)\s*traffic-reset\s*:\s*(\d{1,2})\s*(?:;|$)/i);
   const value = match ? Number(match[1]) : Number(fallback);
@@ -135,7 +176,7 @@ function cycleStart(resetDay: number): Date {
 
 function cumulativeDelta(records: LoadRecord[], key: "net_total_up" | "net_total_down", startMs: number): number {
   const sorted = [...records]
-    .filter((r) => Number.isFinite(Number(r[key])))
+    .filter((record) => Number.isFinite(Number(record[key])))
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
   if (sorted.length === 0) return 0;
 
@@ -159,19 +200,19 @@ function cumulativeDelta(records: LoadRecord[], key: "net_total_up" | "net_total
 function cycleTrafficFromRecords(records: LoadRecord[], resetDay: number, type: string): number | null {
   const start = cycleStart(resetDay);
   const startMs = start.getTime();
-  const inCycle = records.filter((r) => new Date(r.time).getTime() >= startMs);
+  const inCycle = records.filter((record) => new Date(record.time).getTime() >= startMs);
 
   const hasDeltaTraffic = inCycle.some(
-    (r) => Number(r.traffic_up || 0) > 0 || Number(r.traffic_down || 0) > 0,
+    (record) => Number(record.traffic_up || 0) > 0 || Number(record.traffic_down || 0) > 0,
   );
   if (hasDeltaTraffic) {
-    const up = inCycle.reduce((sum, r) => sum + Math.max(0, Number(r.traffic_up || 0)), 0);
-    const down = inCycle.reduce((sum, r) => sum + Math.max(0, Number(r.traffic_down || 0)), 0);
+    const up = inCycle.reduce((sum, record) => sum + Math.max(0, Number(record.traffic_up || 0)), 0);
+    const down = inCycle.reduce((sum, record) => sum + Math.max(0, Number(record.traffic_down || 0)), 0);
     return trafficUsed(up, down, type);
   }
 
   const hasCounters = records.some(
-    (r) => Number.isFinite(Number(r.net_total_up)) || Number.isFinite(Number(r.net_total_down)),
+    (record) => Number.isFinite(Number(record.net_total_up)) || Number.isFinite(Number(record.net_total_down)),
   );
   if (!hasCounters) return null;
   return trafficUsed(
@@ -227,12 +268,7 @@ function billingText(node: NodeInfo): string | null {
   const cycleDays = Number(node.billing_cycle);
   const cycle = Number.isFinite(cycleDays) && cycleDays > 0 ? fmtCycle(Math.round(cycleDays)) : "";
   const amount = price < 0 ? t("free") : `${currencySymbol(node.currency)}${price}`;
-  return cycle ? `${amount}/${cycle}` : amount;
-}
-
-function onlineDays(uptime: number | undefined): number {
-  const seconds = Math.max(0, Number(uptime) || 0);
-  return Math.floor(seconds / 86400);
+  return cycle ? `${amount} / ${cycle}` : amount;
 }
 
 export default function NodeCard({
@@ -251,6 +287,7 @@ export default function NodeCard({
   const diskPct = status ? fmtPercent(status.disk, status.disk_total || node.disk_total) : 0;
 
   const trafficLimit = node.traffic_limit || 0;
+  const nodeResetDay = normalizedResetDay(node.tags, trafficResetDay);
   const cycleTraffic = useCycleTraffic(node, index, trafficResetDay);
   const rawTraffic = status ? trafficUsed(status.net_total_up, status.net_total_down, node.traffic_limit_type) : 0;
   const trafficUse = cycleTraffic ?? rawTraffic;
@@ -259,13 +296,30 @@ export default function NodeCard({
 
   const expDays = daysUntil(node.expired_at);
   const expSoon = expDays !== null && expDays <= 15;
+  const expiry = node.expired_at && expDays !== null ? fmtDate(node.expired_at) : null;
   const billing = billingText(node);
+
+  const asn = metadataTag(node.tags, ["asn"]);
+  const ipv4 = metadataTag(node.tags, ["ipv4", "ip4", "ipv4-country"]);
+  const ipv6 = metadataTag(node.tags, ["ipv6", "ip6", "ipv6-country"]);
+  const ipGeo = ipv4 || ipv6 ? `${ipv4 || "-"} / ${ipv6 || "-"}` : "";
 
   const tags = (node.tags || "")
     .split(";")
-    .map((s) => s.trim())
-    .filter((s) => Boolean(s) && !/^traffic-reset\s*:/i.test(s))
+    .map((value) => value.trim())
+    .filter(
+      (value) =>
+        Boolean(value) &&
+        !/^(?:traffic-reset|asn|ipv4|ip4|ipv4-country|ipv6|ip6|ipv6-country)\s*:/i.test(value),
+    )
     .slice(0, 3);
+
+  const speedUp = online && status ? fmtSpeed(status.net_out) : "-";
+  const speedDown = online && status ? fmtSpeed(status.net_in) : "-";
+  const speedTotal = online && status ? fmtSpeed(status.net_in + status.net_out) : "-";
+  const totalUp = online && status ? fmtBytes(status.net_total_up) : "-";
+  const totalDown = online && status ? fmtBytes(status.net_total_down) : "-";
+  const uptime = online && status ? fmtUptime(status.uptime, t) : "-";
 
   return (
     <article
@@ -284,11 +338,15 @@ export default function NodeCard({
       className={`node-card glass rounded-[20px] p-4 text-left w-full card-hover rise cursor-pointer ${online ? "" : "offline-card"}`}
       style={{ animationDelay: `${Math.min(index * 55, 600)}ms` }}
     >
-      <div className="flex items-start gap-2.5 mb-3.5">
+      <div className="flex items-start gap-2.5 mb-2.5">
         <Flag region={node.region} size={24} />
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-[15px] truncate leading-tight">{node.name}</div>
-          <div className="flex items-center gap-1 text-[11px] text-dim truncate mt-0.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {node.region && <span className="text-[11px] text-dim font-medium shrink-0">{node.region}</span>}
+            <div className="font-semibold text-[15px] truncate leading-tight">{node.name}</div>
+          </div>
+
+          <div className="flex items-center gap-1 text-[11px] text-dim truncate mt-1">
             <img
               src={osIcon(node.os)}
               alt=""
@@ -297,33 +355,51 @@ export default function NodeCard({
               loading="lazy"
               className="shrink-0 opacity-90"
             />
-            <span className="truncate">
-              {shortOs(node.os)} · {node.arch}
+            <span className="truncate" title={`${node.os} · ${node.arch}`}>
+              {node.os || "-"} · {node.arch}
             </span>
           </div>
-        </div>
 
-        <div className="shrink-0 flex flex-col items-end gap-1 text-[11px] text-dim num">
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${online ? "dot-online" : "dot-offline"}`}
-            />
-            <span>
-              {online && status
-                ? `${t("online")} ${onlineDays(status.uptime)}${t("day")}`
-                : t("offline")}
-            </span>
-          </div>
-          {billing && (
-            <span className="max-w-[112px] truncate whitespace-nowrap" title={billing}>
-              {billing}
-            </span>
+          {asn && (
+            <div className="text-[11px] text-dim truncate mt-0.5" title={asn}>
+              <span className="font-medium">{t("asn")}:</span> {asn}
+            </div>
+          )}
+          {ipGeo && (
+            <div className="text-[11px] text-dim truncate mt-0.5" title={ipGeo}>
+              <span className="font-medium">{t("ipGeo")}:</span> {ipGeo}
+            </div>
           )}
         </div>
+
+        <span
+          className={`w-2.5 h-2.5 rounded-full shrink-0 mt-0.5 ${online ? "dot-online" : "dot-offline"}`}
+          title={online ? t("online") : t("offline")}
+        />
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        <Bar label={t("cpu")} pct={online ? cpu : 0} grad={GRADS.cpu.grad} color={GRADS.cpu.color} />
+      <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 py-2.5 border-y" style={{ borderColor: "var(--glass-border)" }}>
+        <InfoStat label={`↑ ${t("upload")}`} value={speedUp} color="#c56b2d" />
+        <InfoStat label={t("realtimeSpeed")} value={speedTotal} color="#4f6fb5" />
+        <InfoStat label={`↓ ${t("download")}`} value={speedDown} color="#0d9b78" />
+
+        <InfoStat label={t("cumulativeUpload")} value={totalUp} color="#c56b2d" />
+        <InfoStat label={t("cumulativeDownload")} value={totalDown} color="#4f6fb5" />
+        <InfoStat label={t("onlineDuration")} value={uptime} color="#0d9b78" />
+
+        {expiry && <InfoStat label={t("expire")} value={expiry} color={expSoon ? "#f59e2b" : undefined} />}
+        {trafficLimit > 0 && <InfoStat label={t("trafficReset")} value={fmtMonthlyResetDay(nodeResetDay)} color="#0d9b78" />}
+        {billing && <InfoStat label={t("billingAmount")} value={billing} color="#c56b2d" />}
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-3 mt-3">
+        <Bar
+          label={t("cpu")}
+          pct={online ? cpu : 0}
+          grad={GRADS.cpu.grad}
+          color={GRADS.cpu.color}
+          sub={`${node.cpu_cores} ${t("cores")}`}
+        />
         <Bar
           label={t("ram")}
           pct={online ? ramPct : 0}
@@ -340,7 +416,7 @@ export default function NodeCard({
         />
         {trafficLimit > 0 && (
           <Bar
-            label={t("traffic")}
+            label={t("cycleTraffic")}
             pct={online ? trafficPct : 0}
             grad={trafficStyle.grad}
             color={trafficStyle.color}
@@ -363,21 +439,6 @@ export default function NodeCard({
           hoverSelections={allLatencyTasks}
         />
       )}
-
-      <div className="node-card-footer flex items-center gap-4 text-[12px] num">
-        {online && status ? (
-          <>
-            <span className="whitespace-nowrap">
-              <span style={{ color: "#fb7185" }}>↑</span> {fmtSpeed(status.net_out)}
-            </span>
-            <span className="whitespace-nowrap">
-              <span style={{ color: "#2dd4bf" }}>↓</span> {fmtSpeed(status.net_in)}
-            </span>
-          </>
-        ) : (
-          <span className="min-w-0 truncate text-dim">{t("offline_hint")}</span>
-        )}
-      </div>
 
       {(tags.length > 0 || expSoon) && (
         <div className="node-card-tags flex gap-1.5 mt-2.5 flex-wrap">
