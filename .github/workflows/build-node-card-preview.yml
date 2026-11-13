@@ -31,5 +31,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: komari-theme-card-network-info-preview
-          path: komari-theme-tasogare-gpu-2.2.0-komari.zip
+          path: komari-theme-tasogare-gpu-*-komari.zip
           if-no-files-found: error
