@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -27,21 +30,36 @@ jobs:
       - name: Build and package
         run: npm run package
 
+      - name: Validate optional node metadata plugin
+        run: |
+          node --check plugins/node-network-meta/script.js
+          node tests/node-network-meta.test.cjs
+
+      - name: Package optional node metadata plugin
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          PLUGIN_ZIP="komari-node-network-meta-plugin-${VERSION}.zip"
+          python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1],"w",zipfile.ZIP_DEFLATED); z.write("plugins/node-network-meta/komari-plugin.json","komari-plugin.json"); z.write("plugins/node-network-meta/script.js","script.js"); z.close()' "$PLUGIN_ZIP"
+
       - name: Resolve release metadata
         id: meta
         shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
           ZIP="komari-theme-tasogare-gpu-${VERSION}-komari.zip"
+          PLUGIN_ZIP="komari-node-network-meta-plugin-${VERSION}.zip"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "plugin_zip=$PLUGIN_ZIP" >> "$GITHUB_OUTPUT"
 
-      - name: Upload theme zip
+      - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
           name: komari-theme-tasogare-gpu-${{ steps.meta.outputs.version }}-komari
-          path: ${{ steps.meta.outputs.zip }}
+          path: |
+            ${{ steps.meta.outputs.zip }}
+            ${{ steps.meta.outputs.plugin_zip }}
           if-no-files-found: error
 
       - name: Publish GitHub release
@@ -51,6 +69,7 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
           ZIP: ${{ steps.meta.outputs.zip }}
+          PLUGIN_ZIP: ${{ steps.meta.outputs.plugin_zip }}
         shell: bash
         run: |
           cat > release-notes.md <<EOF
@@ -58,15 +77,15 @@ jobs:
 
           基于 Tasogare v1.2.2 整合并增强。
 
-          ### 本次修复
-          - 每张节点卡片固定显示系统、ASN、IPv4/IPv6 三行信息。
-          - 未配置 ASN、IPv4/IPv6 归属时明确显示“待配置”，不再隐藏信息行。
-          - 系统版本和 ASN 长文本支持换行，窄屏也能看到完整信息。
-          - 通过节点标签 asn:、ipv4:、ipv6: 补全真实公开元数据。
-          - 保留 GPU/iGPU、延迟/丢包、月流量周期和 v2.2.4 资源卡片布局。
+          ### 自动 ASN 与 IP 国家归属
+          - 主题自动读取可选服务端插件返回的 ASN、IPv4/IPv6 国家信息。
+          - 服务端插件使用 Komari 保存的节点 IP 进行查询，不会把原始 IP 输出到公共 API。
+          - 自动信息可通过节点 Tag 覆盖；插件未安装或识别失败时仍保留“待配置”提示。
+          - 保持系统信息、GPU/iGPU、延迟/丢包、流量周期及 v2.2.5 界面结构。
 
           ### 安装
-          下载 \`${ZIP}\`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
+          主题：下载 \`${ZIP}\`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
+          自动 ASN/IP：另在 Komari 插件管理中安装 \`${PLUGIN_ZIP}\`，启用并批准所需权限。插件会通过第三方 ipapi.is 查询服务器公网 IP 的 ASN 和国家。
           EOF
 
           if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
@@ -79,12 +98,12 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --target "$GITHUB_SHA" \
-              --title "v${VERSION} — Always-visible Node Metadata" \
+              --title "v${VERSION} — Automatic ASN / IP Geolocation" \
               --notes-file release-notes.md
-            gh release upload "$TAG" "$ZIP" --clobber
+            gh release upload "$TAG" "$ZIP" "$PLUGIN_ZIP" --clobber
           else
-            gh release create "$TAG" "$ZIP" \
+            gh release create "$TAG" "$ZIP" "$PLUGIN_ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v${VERSION} — Always-visible Node Metadata" \
+              --title "v${VERSION} — Automatic ASN / IP Geolocation" \
               --notes-file release-notes.md
           fi
