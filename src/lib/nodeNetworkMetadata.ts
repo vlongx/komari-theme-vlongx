@@ -10,6 +10,7 @@ type NodeMetadataMap = Record<string, NetworkMetadata>;
 
 const ENDPOINT = "/api/vlongx/node-network-meta";
 const REFRESH_MS = 15 * 60 * 1000;
+const RETRY_MS = 60 * 1000;
 
 let cache: NodeMetadataMap = {};
 let expires = 0;
@@ -26,12 +27,12 @@ function getMetadata(): Promise<NodeMetadataMap> {
     .then((payload) => {
       const data = payload.nodes && typeof payload.nodes === "object" ? payload.nodes : {};
       cache = data;
-      expires = Date.now() + REFRESH_MS;
+      expires = Date.now() + (Object.keys(cache).length ? REFRESH_MS : RETRY_MS);
       return cache;
     })
     .catch(() => {
       // The server-side plugin is optional; retain v2.2.5 fallback labels.
-      expires = Date.now() + REFRESH_MS;
+      expires = Date.now() + RETRY_MS;
       return cache;
     })
     .finally(() => {
@@ -51,7 +52,7 @@ export function useNodeNetworkMetadata(uuid: string): NetworkMetadata | null {
       });
     };
     update();
-    const interval = window.setInterval(update, REFRESH_MS);
+    const interval = window.setInterval(update, RETRY_MS);
     return () => {
       active = false;
       window.clearInterval(interval);

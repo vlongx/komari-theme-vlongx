@@ -47,6 +47,11 @@ function response() {
   assert(!JSON.stringify(res.body).includes('8.8.8.8'));
   assert(!JSON.stringify(res.body).includes('2001:4860'));
   assert.equal(requestCount, 2);
+  assert.equal(res.body.status, 'ok');
+  assert.equal(res.body.diagnostics.visible_nodes, 2);
+  assert.equal(res.body.diagnostics.nodes_with_public_ip, 1);
+  assert.equal(res.body.diagnostics.nodes_with_asn, 1);
+  assert.equal(res.body.diagnostics.nodes_with_country, 1);
   res = response();
   await currentRoute.handler({ context: { principal: { type: 'guest' } } }, res);
   assert.equal(requestCount, 2, 'Second request should use cached lookup results');
@@ -54,5 +59,10 @@ function response() {
   res = response();
   await currentRoute.handler({ context: { principal: { type: 'guest' } } }, res);
   assert.deepEqual(Object.keys(res.body.nodes), [], 'Private site must not expose metadata to guests');
-  console.log('PASS: public ASN / IPv4 / IPv6 metadata, no raw IP leakage, privacy, cache, hidden filtering');
+  res = response();
+  await currentRoute.handler({ context: { principal: { type: 'user', roles: ['admin'] } } }, res);
+  assert.equal(res.body.nodes.public.asn, 'AS15169 Google LLC',
+    'Authenticated admin must see metadata on private sites (principal.type is user)');
+  assert(!JSON.stringify(res.body).includes('8.8.8.8'));
+  console.log('PASS: public ASN / IPv4 / IPv6 metadata, private-site admin access, safe diagnostics, cache, hidden filtering');
 })().catch((e) => { console.error(e); process.exitCode = 1; });

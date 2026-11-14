@@ -6,7 +6,7 @@
   "short": "vlongx-node-network-meta",
   "description": "Server-side ASN and country lookup for visible Komari nodes. Private node IPs are never included in the public response. Uses api.ipapi.is for lookups.",
   "author": "vlongx",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entry": "script.js",
   "permissions": {
     "timeout": 120,

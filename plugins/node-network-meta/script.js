@@ -4,7 +4,7 @@ const server = require("server");
 const ROUTE = "/api/vlongx/node-network-meta";
 const PROVIDER = "https://api.ipapi.is/?q=";
 const META_TTL = 12 * 60 * 60 * 1000;
-const ERROR_TTL = 30 * 60 * 1000;
+const ERROR_TTL = 5 * 60 * 1000;
 const MAX_NODES = 300;
 const MAX_CONCURRENT_LOOKUPS = 5;
 let snapshot = null;
@@ -111,7 +111,18 @@ async function refresh() {
       ipv6_country: g6.country || ""
     };
   }
-  snapshot = { nodes: output, updated_at: new Date().toISOString(), expires: Date.now() + META_TTL };
+  // Aggregate diagnostics never include node addresses or identifiers.
+  const values = Object.values(output);
+  const diagnostics = {
+    visible_nodes: list.length,
+    nodes_with_public_ip: Array.from(byUUID.values()).filter((entry) => entry.v4 || entry.v6).length,
+    nodes_with_asn: values.filter((value) => value.asn).length,
+    nodes_with_country: values.filter((value) => value.ipv4_country || value.ipv6_country).length
+  };
+  // Avoid caching an unavailable provider or missing public IP for 12 hours.
+  const refreshTTL = diagnostics.nodes_with_asn || diagnostics.nodes_with_country
+    ? META_TTL : ERROR_TTL;
+  snapshot = { nodes: output, diagnostics, updated_at: new Date().toISOString(), expires: Date.now() + refreshTTL };
   return snapshot;
 }
 
@@ -131,7 +142,10 @@ async function respond(req, res) {
     // A private-site owner must not expose node metadata to guest viewers.
     if (settings && settings.private_site) {
       const principal = req && req.context && req.context.principal;
-      if (!principal || String(principal.type || "").toLowerCase() !== "admin") {
+      const roles = principal && Array.isArray(principal.roles) ? principal.roles : [];
+      const isAdmin = roles.some((role) => String(role).toLowerCase() === "admin") ||
+        String(req && req.context && req.context.role || "").toLowerCase() === "admin";
+      if (!isAdmin) {
         res.end(JSON.stringify({ nodes: {}, disabled: "private_site" }));
         return;
       }
@@ -148,9 +162,16 @@ async function respond(req, res) {
     for (const uuid of Object.keys(info.nodes)) {
       if (allowed.has(uuid)) publicNodes[uuid] = info.nodes[uuid];
     }
-    res.end(JSON.stringify({ nodes: publicNodes, updated_at: info.updated_at }));
-  } catch (_) {
-    // Fail closed on any authorization, RPC or provider failure.
+    res.end(JSON.stringify({
+      nodes: publicNodes,
+      status: info.diagnostics.nodes_with_country || info.diagnostics.nodes_with_asn
+        ? "ok" : info.diagnostics.nodes_with_public_ip ? "lookup_unavailable" : "no_public_ip",
+      diagnostics: info.diagnostics,
+      updated_at: info.updated_at
+    }));
+  } catch (error) {
+    // Fail closed on any authorization, RPC or provider failure. Log category only.
+    console.error("[vlongx-node-network-meta] node metadata refresh failed");
     res.statusCode = 503;
     res.end(JSON.stringify({ nodes: {}, error: "metadata_unavailable" }));
   }

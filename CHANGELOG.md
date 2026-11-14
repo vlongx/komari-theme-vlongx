@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.7
+
+- 修复插件私有站点管理员权限识别（检查 principal.roles，而不是错误地要求 principal.type=admin）。
+- 插件增加安全聚合诊断：status、visible_nodes、nodes_with_public_ip、nodes_with_asn、nodes_with_country，不包含真实 IP。
+- 前端在插件未连接时缩短重试间隔为 60 秒。
+- 主题与插件继续分别发布，以兼容 Komari 远程主题导入。
+
+
 ## 2.2.6
 
 - 发布兼容性修复：Komari GitHub 主题导入器始终选择最新 Release 的第一个附件，现将正式 Release 限定为仅包含主题 ZIP，插件 ZIP 发布到独立的 `v2.2.6-plugin` Prerelease。
