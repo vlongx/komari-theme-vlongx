@@ -4,6 +4,7 @@ import { getRecords } from "../lib/api";
 import { daysUntil, fmtBytes, fmtDate, fmtPercent, fmtSpeed, fmtUptime, trafficUsed } from "../lib/format";
 import { fmtCycle, fmtDaysLeft, fmtMonthlyResetDay, t } from "../lib/i18n";
 import { osIcon } from "../lib/osIcon";
+import { useNodeNetworkMetadata } from "../lib/nodeNetworkMetadata";
 import type { ResolvedLatencySelection } from "../lib/latencySelection";
 import Flag from "./Flag";
 import LatencySelectionPanel from "./LatencySelectionPanel";
@@ -299,9 +300,12 @@ export default function NodeCard({
   const expiry = node.expired_at && expDays !== null ? fmtDate(node.expired_at) : null;
   const billing = billingText(node);
 
-  const asn = metadataTag(node.tags, ["asn"]);
-  const ipv4 = metadataTag(node.tags, ["ipv4", "ip4", "ipv4-country"]);
-  const ipv6 = metadataTag(node.tags, ["ipv6", "ip6", "ipv6-country"]);
+  // Explicit per-node metadata tags override automatic lookup when present.
+  // Auto metadata is computed inside Komari by the optional privileged plugin.
+  const autoNetwork = useNodeNetworkMetadata(node.uuid);
+  const asn = metadataTag(node.tags, ["asn"]) || autoNetwork?.asn || "";
+  const ipv4 = metadataTag(node.tags, ["ipv4", "ip4", "ipv4-country"]) || autoNetwork?.ipv4_country || "";
+  const ipv6 = metadataTag(node.tags, ["ipv6", "ip6", "ipv6-country"]) || autoNetwork?.ipv6_country || "";
   const ipGeo = `${ipv4 || t("notConfigured")} / ${ipv6 || t("notConfigured")}`;
 
   const tags = (node.tags || "")
