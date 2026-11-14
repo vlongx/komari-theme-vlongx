@@ -1,6 +1,19 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.7`
+当前版本：`v2.2.8`
+
+## v2.2.8 更新：IPv4/IPv6 信息按实际情况显示
+
+节点卡片顶部的网络归属信息不再显示没有数据的 IP 协议占位符：
+
+- 双栈有数据：`IPv4/IPv6: Hong Kong / Japan`
+- 只有 IPv4：`IPv4: Hong Kong`
+- 只有 IPv6：`IPv6: Japan`
+- 两者均无数据：**保留 IPv4/IPv6 这一行，但值留空**（不出现“待配置”）。
+
+仅修改卡片的 IPv4/IPv6 信息展示，ASN、系统、GPU/iGPU、流量周期、TCPing 和丢包逻辑保持原样。
+
+
 
 ## v2.2.7 修复：自动 ASN/IP 识别与诊断
 
@@ -12,7 +25,7 @@
 
 ### 无数据显示时如何诊断
 
-先确认已在 Komari **插件管理** 安装、启用 `komari-node-network-meta-plugin-2.2.7.zip`，并批准 `allowRoutes` 和 `allowSystemRPC`，然后访问：
+先确认已在 Komari **插件管理** 安装、启用 `komari-node-network-meta-plugin-2.2.8.zip`，并批准 `allowRoutes` 和 `allowSystemRPC`，然后访问：
 
 ```text
 https://你的Komari域名/api/vlongx/node-network-meta
@@ -31,8 +44,8 @@ https://你的Komari域名/api/vlongx/node-network-meta
 
 Komari 的 GitHub 导入器会将 `github.com/owner/repo/releases/download/...` 也识别为“仓库地址”，然后取最新 Release 的**第一个附件**。因此 **正式主题 Release 必须只放主题 ZIP**，不能混入插件。
 
-- 主题（唯一正式附件）：[komari-theme-tasogare-gpu-2.2.7-komari.zip](https://github.com/vlongx/komari-theme-vlongx/releases/download/v2.2.7/komari-theme-tasogare-gpu-2.2.7-komari.zip)
-- 服务端插件（独立 Prerelease）：[komari-node-network-meta-plugin-2.2.7.zip](https://github.com/vlongx/komari-theme-vlongx/releases/download/v2.2.7-plugin/komari-node-network-meta-plugin-2.2.7.zip)
+- 主题（唯一正式附件）：[komari-theme-tasogare-gpu-2.2.8-komari.zip](https://github.com/vlongx/komari-theme-vlongx/releases/download/v2.2.8/komari-theme-tasogare-gpu-2.2.8-komari.zip)
+- 服务端插件（独立 Prerelease）：[komari-node-network-meta-plugin-2.2.8.zip](https://github.com/vlongx/komari-theme-vlongx/releases/download/v2.2.8-plugin/komari-node-network-meta-plugin-2.2.8.zip)
 
 Komari → **导入远程主题**：推荐输入仓库根地址 `https://github.com/vlongx/komari-theme-vlongx`，现在会自动选择唯一的正式主题附件。
 
@@ -45,8 +58,8 @@ Komari → **导入远程主题**：推荐输入仓库根地址 `https://github.
 
 **要自动显示，需同时安装两个包：**
 
-1. 主题：`komari-theme-tasogare-gpu-2.2.7-komari.zip`，在 Komari「主题管理」安装。
-2. 可选服务端插件：[komari-node-network-meta-plugin-2.2.7.zip](https://github.com/vlongx/komari-theme-vlongx/releases/download/v2.2.7-plugin/komari-node-network-meta-plugin-2.2.7.zip)，在 Komari「插件管理」安装、启用并批准 `allowRoutes` 和 `allowSystemRPC` 权限。需要支持 JavaScript 插件的 Komari 服务端版本。
+1. 主题：`komari-theme-tasogare-gpu-2.2.8-komari.zip`，在 Komari「主题管理」安装。
+2. 可选服务端插件：[komari-node-network-meta-plugin-2.2.8.zip](https://github.com/vlongx/komari-theme-vlongx/releases/download/v2.2.8-plugin/komari-node-network-meta-plugin-2.2.8.zip)，在 Komari「插件管理」安装、启用并批准 `allowRoutes` 和 `allowSystemRPC` 权限。需要支持 JavaScript 插件的 Komari 服务端版本。
 
 插件使用已在 Komari 服务端保存的完整节点 IPv4/IPv6，仅在服务端查询 `https://api.ipapi.is/?q=<IP>` 的 ASN 和国家。结果按节点 UUID 缓存并以精简 JSON 提供给主题：
 
@@ -215,6 +228,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.7-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.8-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
