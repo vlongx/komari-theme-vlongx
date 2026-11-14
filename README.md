@@ -1,6 +1,24 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.4`
+当前版本：`v2.2.5`
+
+## v2.2.5 修复：节点信息三行始终可见
+
+- 所有服务器卡片顶部固定显示 **系统 / ASN / IPv4/IPv6** 三行，保留完整的卡片信息结构。
+- 系统使用 Komari 公开节点信息中的 `os`、`arch`；ASN、IPv4/IPv6 国家/地区继续使用节点标签 `asn:`、`ipv4:`、`ipv6:`。
+- 即使未配置标签，也显示“待配置”，不会隐藏 ASN 或 IPv4/IPv6 行，不会拿其他节点的值或猜测国家。
+- 信息区单独成组，较长的系统或 ASN 文本支持换行，窄屏不再整行消失。
+- 只修复信息显示；现有 GPU/iGPU、月流量周期、TCP/UDP、延迟/丢包和弹窗功能不变。
+
+### 配置示例
+
+在 Komari 后台给相应节点添加标签（以半角分号分隔）：
+
+```text
+asn:AS3258 xTom Japan Corporation;ipv4:Japan;ipv6:Japan
+```
+
+> Komari 公共节点 API 不暴露节点原始 IPv4/IPv6 地址；ASN 和 IP 归属标签需由管理员填写真实资料。未填写时固定显示“待配置”。
 
 ## v2.2.4 更新
 
@@ -125,6 +143,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.4-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.5-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
