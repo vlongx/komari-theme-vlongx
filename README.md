@@ -1,6 +1,41 @@
 # Tasogare 黄昏 自选延迟 GPU 版
 
-当前版本：`v2.2.5`
+当前版本：`v2.2.6`
+
+## v2.2.6 更新：自动查询节点 ASN 与 IPv4/IPv6 国家
+
+新版主题可以读取 **Komari 服务端插件**自动生成的节点网络信息，不再需要逐台填写 ASN 或国家。主题 ZIP 本身不会读取到服务端私有 IP：官方公开节点 API 默认隐藏 IP。
+
+**要自动显示，需同时安装两个包：**
+
+1. 主题：`komari-theme-tasogare-gpu-2.2.6-komari.zip`，在 Komari「主题管理」安装。
+2. 可选服务端插件：`komari-node-network-meta-plugin-2.2.6.zip`，在 Komari「插件管理」安装、启用并批准 `allowRoutes` 和 `allowSystemRPC` 权限。需要支持 JavaScript 插件的 Komari 服务端版本。
+
+插件使用已在 Komari 服务端保存的完整节点 IPv4/IPv6，仅在服务端查询 `https://api.ipapi.is/?q=<IP>` 的 ASN 和国家。结果按节点 UUID 缓存并以精简 JSON 提供给主题：
+
+```json
+{
+  "nodes": {
+    "<uuid>": {
+      "asn": "AS3258 xTom Japan Corporation",
+      "ipv4_country": "Japan",
+      "ipv6_country": "Japan"
+    }
+  }
+}
+```
+
+**公开数据绝不包含原始节点 IP；隐藏节点不返回；私有 Komari 站点不向访客返回此数据。** 插件会把公网 IP 提交给第三方查询服务，安装前请确认你接受这一点。免费服务有查询限额及准确性限制，断网或查询失败时保留“待配置”；无公网 IPv4/IPv6 的节点对应字段也无法自动识别。IP 查询结果缓存约 12 小时。
+
+插件开启后，可访问同源 `/api/vlongx/node-network-meta` 验证返回的 ASN、IPv4/IPv6 国家。接口无需输入 IP，不接受用户指定目标地址。
+
+原有节点标签可选，配置后覆盖自动查询值：
+
+```text
+asn:AS3258 xTom Japan Corporation;ipv4:Japan;ipv6:Japan
+```
+
+所有节点的系统、ASN 和 IPv4/IPv6 三行仍固定显示；未能自动识别时显示“待配置”。保留 v2.2.5 的硬件信息、GPU、延迟与丢包、月流量周期等功能。
 
 ## v2.2.5 修复：节点信息三行始终可见
 
@@ -143,6 +178,6 @@ traffic-reset:13
 
 ## 安装
 
-下载 Release 中的 `komari-theme-tasogare-gpu-2.2.5-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
+下载 Release 中的 `komari-theme-tasogare-gpu-2.2.6-komari.zip`，在 Komari 后台进入主题管理并直接上传 ZIP，不要解压。
 
 本项目继续遵循原项目许可证。
