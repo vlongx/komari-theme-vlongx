@@ -1,0 +1,16 @@
+{
+  "name": {
+    "zh_CN": "Vlongx 节点 ASN / IP 归属自动识别",
+    "en": "Vlongx Automatic Node ASN / Geo"
+  },
+  "short": "vlongx-node-network-meta",
+  "description": "Server-side ASN and country lookup for visible Komari nodes. Private node IPs are never included in the public response. Uses api.ipapi.is for lookups.",
+  "author": "vlongx",
+  "version": "1.0.0",
+  "entry": "script.js",
+  "permissions": {
+    "timeout": 120,
+    "allowRoutes": true,
+    "allowSystemRPC": true
+  }
+}
