@@ -123,7 +123,8 @@ function getSnapshot() {
 
 async function respond(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=300");
+  // No HTTP shared caching: private-site authentication and Hidden nodes can change.
+  res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   try {
     const settings = await server.call("public:getPublicSettings", {});
@@ -135,14 +136,23 @@ async function respond(req, res) {
         return;
       }
     }
+    // Verify each node remains public before responding, even if the ASN cache is warm.
+    const currentlyVisible = await server.call("common:getNodes", {});
+    const allowed = new Set(
+      Object.values(currentlyVisible || {})
+        .filter((node) => node && !node.hidden && typeof node.uuid === "string")
+        .map((node) => node.uuid)
+    );
     const info = await getSnapshot();
-    res.end(JSON.stringify({ nodes: info.nodes, updated_at: info.updated_at }));
-  } catch (_) {
-    if (snapshot) res.end(JSON.stringify({ nodes: snapshot.nodes, stale: true }));
-    else {
-      res.statusCode = 503;
-      res.end(JSON.stringify({ nodes: {}, error: "metadata_unavailable" }));
+    const publicNodes = Object.create(null);
+    for (const uuid of Object.keys(info.nodes)) {
+      if (allowed.has(uuid)) publicNodes[uuid] = info.nodes[uuid];
     }
+    res.end(JSON.stringify({ nodes: publicNodes, updated_at: info.updated_at }));
+  } catch (_) {
+    // Fail closed on any authorization, RPC or provider failure.
+    res.statusCode = 503;
+    res.end(JSON.stringify({ nodes: {}, error: "metadata_unavailable" }));
   }
 }
 
