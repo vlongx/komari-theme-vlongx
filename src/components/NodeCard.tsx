@@ -302,7 +302,7 @@ export default function NodeCard({
   const asn = metadataTag(node.tags, ["asn"]);
   const ipv4 = metadataTag(node.tags, ["ipv4", "ip4", "ipv4-country"]);
   const ipv6 = metadataTag(node.tags, ["ipv6", "ip6", "ipv6-country"]);
-  const ipGeo = ipv4 || ipv6 ? `${ipv4 || "-"} / ${ipv6 || "-"}` : "";
+  const ipGeo = `${ipv4 || t("notConfigured")} / ${ipv6 || t("notConfigured")}`;
 
   const tags = (node.tags || "")
     .split(";")
@@ -343,39 +343,45 @@ export default function NodeCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             {node.region && <span className="text-[11px] text-dim font-medium shrink-0">{node.region}</span>}
-            <div className="font-semibold text-[15px] truncate leading-tight">{node.name}</div>
+            <div className="font-semibold text-[15px] truncate leading-tight" title={node.name}>{node.name}</div>
           </div>
-
-          <div className="flex items-center gap-1 text-[11px] text-dim truncate mt-1">
-            <img
-              src={osIcon(node.os)}
-              alt=""
-              width={13}
-              height={13}
-              loading="lazy"
-              className="shrink-0 opacity-90"
-            />
-            <span className="truncate" title={`${node.os} · ${node.arch}`}>
-              {node.os || "-"} · {node.arch}
-            </span>
-          </div>
-
-          {asn && (
-            <div className="text-[11px] text-dim truncate mt-0.5" title={asn}>
-              <span className="font-medium">{t("asn")}:</span> {asn}
-            </div>
-          )}
-          {ipGeo && (
-            <div className="text-[11px] text-dim truncate mt-0.5" title={ipGeo}>
-              <span className="font-medium">{t("ipGeo")}:</span> {ipGeo}
-            </div>
-          )}
         </div>
-
         <span
           className={`w-2.5 h-2.5 rounded-full shrink-0 mt-0.5 ${online ? "dot-online" : "dot-offline"}`}
           title={online ? t("online") : t("offline")}
         />
+      </div>
+
+      {/* Always render all three rows; Komari may intentionally omit public IP metadata. */}
+      <div
+        className="mb-3 px-2.5 py-2 rounded-xl flex flex-col gap-1.5"
+        style={{ background: "var(--chip)", border: "1px solid var(--glass-border)" }}
+      >
+        <div className="flex items-start gap-2 text-[12px] text-dim leading-snug min-w-0">
+          <img
+            src={osIcon(node.os)}
+            alt=""
+            width={15}
+            height={15}
+            loading="lazy"
+            className="shrink-0 opacity-90 mt-0.5"
+          />
+          <span className="min-w-0 break-words" title={`${node.os || "-"} · ${node.arch || "-"}`}>
+            {node.os || "-"} · {node.arch || "-"}
+          </span>
+        </div>
+        <div className="flex items-start gap-2 text-[12px] text-dim leading-snug min-w-0">
+          <span className="shrink-0 w-[15px] text-center" aria-hidden="true">🌐</span>
+          <span className="min-w-0 break-words" title={asn || t("notConfigured")}>
+            <span className="font-medium">{t("asn")}:</span> {asn || t("notConfigured")}
+          </span>
+        </div>
+        <div className="flex items-start gap-2 text-[12px] text-dim leading-snug min-w-0">
+          <span className="shrink-0 w-[15px] text-center" aria-hidden="true">🌍</span>
+          <span className="min-w-0 break-words" title={ipGeo}>
+            <span className="font-medium">{t("ipGeo")}:</span> {ipGeo}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-x-2 gap-y-2.5 py-2.5 border-y" style={{ borderColor: "var(--glass-border)" }}>

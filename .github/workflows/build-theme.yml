@@ -58,13 +58,12 @@ jobs:
 
           基于 Tasogare v1.2.2 整合并增强。
 
-          ### 本次更新
-          - 节点卡片按新的信息层级重新布局，顶部显示完整系统版本与架构。
-          - 新增 ASN 与 IPv4/IPv6 归属信息，通过节点标签 asn:、ipv4:、ipv6: 提供公开元数据。
-          - 新增上行、实时总速率、下行，以及累计上传、累计下载、在线时长。
-          - 新增到期时间、流量重置日和费用金额信息区。
-          - CPU、内存、硬盘、周期流量改为 2×2 资源布局。
-          - 保留 TCP/UDP、延迟/丢包、GPU/iGPU、流量周期、访问 IP 及现有点击弹窗功能。
+          ### 本次修复
+          - 每张节点卡片固定显示系统、ASN、IPv4/IPv6 三行信息。
+          - 未配置 ASN、IPv4/IPv6 归属时明确显示“待配置”，不再隐藏信息行。
+          - 系统版本和 ASN 长文本支持换行，窄屏也能看到完整信息。
+          - 通过节点标签 asn:、ipv4:、ipv6: 补全真实公开元数据。
+          - 保留 GPU/iGPU、延迟/丢包、月流量周期和 v2.2.4 资源卡片布局。
 
           ### 安装
           下载 \`${ZIP}\`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
@@ -80,12 +79,12 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --target "$GITHUB_SHA" \
-              --title "v${VERSION} — Node Card Network Info" \
+              --title "v${VERSION} — Always-visible Node Metadata" \
               --notes-file release-notes.md
             gh release upload "$TAG" "$ZIP" --clobber
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "v${VERSION} — Node Card Network Info" \
+              --title "v${VERSION} — Always-visible Node Metadata" \
               --notes-file release-notes.md
           fi
