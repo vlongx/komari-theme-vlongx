@@ -2,6 +2,9 @@
 
 ## 2.2.6
 
+- 发布兼容性修复：Komari GitHub 主题导入器始终选择最新 Release 的第一个附件，现将正式 Release 限定为仅包含主题 ZIP，插件 ZIP 发布到独立的 `v2.2.6-plugin` Prerelease。
+- 在 GitHub Actions 中验证 ZIP 根目录存在 `komari-theme.json` 并校验正式 Release 仅有一个主题附件，避免误导入插件。
+
 - 新增可选 Komari 服务端插件，使用管理员权限读取 Komari 保存的节点真实 IP，在服务端通过 ipapi.is 自动查询 ASN 和 IPv4/IPv6 国家/地区。
 - 公开接口仅返回节点 UUID、ASN、IPv4/IPv6 国家，不返回原始 IP；隐藏节点以及私有站点的访客数据受保护。
 - 自动信息优先显示，仍允许节点 Tag 逐项覆盖；缺失数据继续显示“待配置”，三行固定保留。
