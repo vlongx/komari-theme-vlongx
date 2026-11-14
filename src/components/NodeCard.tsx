@@ -306,7 +306,10 @@ export default function NodeCard({
   const asn = metadataTag(node.tags, ["asn"]) || autoNetwork?.asn || "";
   const ipv4 = metadataTag(node.tags, ["ipv4", "ip4", "ipv4-country"]) || autoNetwork?.ipv4_country || "";
   const ipv6 = metadataTag(node.tags, ["ipv6", "ip6", "ipv6-country"]) || autoNetwork?.ipv6_country || "";
-  const ipGeo = `${ipv4 || t("notConfigured")} / ${ipv6 || t("notConfigured")}`;
+  // Show only the protocols that actually have location data.
+  // Keep the network information row empty when neither address exists.
+  const ipGeoLabel = ipv4 && ipv6 ? t("ipGeo") : ipv4 ? "IPv4" : ipv6 ? "IPv6" : t("ipGeo");
+  const ipGeo = ipv4 && ipv6 ? `${ipv4} / ${ipv6}` : ipv4 || ipv6 || "";
 
   const tags = (node.tags || "")
     .split(";")
@@ -383,7 +386,7 @@ export default function NodeCard({
         <div className="flex items-start gap-2 text-[12px] text-dim leading-snug min-w-0">
           <span className="shrink-0 w-[15px] text-center" aria-hidden="true">🌍</span>
           <span className="min-w-0 break-words" title={ipGeo}>
-            <span className="font-medium">{t("ipGeo")}:</span> {ipGeo}
+            <span className="font-medium">{ipGeoLabel}:</span> {ipGeo}
           </span>
         </div>
       </div>
