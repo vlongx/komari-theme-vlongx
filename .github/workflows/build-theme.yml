@@ -30,6 +30,12 @@ jobs:
       - name: Build and package
         run: npm run package
 
+      - name: Verify theme ZIP manifest at archive root
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ZIP="komari-theme-tasogare-gpu-${VERSION}-komari.zip"
+          python3 -c 'import json,sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); names=z.namelist(); assert "komari-theme.json" in names, names; assert "dist/index.html" in names; json.loads(z.read("komari-theme.json"))' "$ZIP"
+
       - name: Validate optional node metadata plugin
         run: |
           node --check plugins/node-network-meta/script.js
@@ -72,6 +78,7 @@ jobs:
           PLUGIN_ZIP: ${{ steps.meta.outputs.plugin_zip }}
         shell: bash
         run: |
+          set -euo pipefail
           cat > release-notes.md <<EOF
           ## Tasogare 黄昏 自选延迟 GPU v${VERSION}
 
@@ -85,7 +92,7 @@ jobs:
 
           ### 安装
           主题：下载 \`${ZIP}\`，在 Komari 后台主题管理中直接上传 ZIP，不要解压。
-          自动 ASN/IP：另在 Komari 插件管理中安装 \`${PLUGIN_ZIP}\`，启用并批准所需权限。插件会通过第三方 ipapi.is 查询服务器公网 IP 的 ASN 和国家。
+          自动 ASN/IP：插件 ZIP 移至独立 prerelease v${VERSION}-plugin，不与主题 ZIP 混放。请在插件管理安装 \`${PLUGIN_ZIP}\`。插件使用第三方 ipapi.is 查询服务器公网 IP。
           EOF
 
           if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
@@ -95,15 +102,56 @@ jobs:
               -F force=true >/dev/null
           fi
 
+          # Komari imports the FIRST asset of latest release, including when
+          # a GitHub asset download URL was supplied. Theme releases must contain
+          # exactly one asset: the ZIP with komari-theme.json at the archive root.
+          PLUGIN_TAG="${TAG}-plugin"
+          cat > plugin-release-notes.md <<EOF
+          ## Optional ASN / IP country lookup plugin for v${VERSION}
+
+          This is a server-side Komari plugin, NOT a theme ZIP.
+          Install \`${PLUGIN_ZIP}\` in Komari plugin management.
+          Plugin may send each node's public IP to api.ipapi.is for ASN/country lookup.
+          EOF
+
+          # Publish the optional plugin separately as a prerelease, so GitHub's
+          # releases/latest endpoint always resolves to the THEME-only release.
+          if gh release view "$PLUGIN_TAG" >/dev/null 2>&1; then
+            gh release edit "$PLUGIN_TAG" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "v${VERSION} — Optional Network Metadata Plugin" \
+              --notes-file plugin-release-notes.md
+            gh release upload "$PLUGIN_TAG" "$PLUGIN_ZIP" --clobber
+          else
+            gh release create "$PLUGIN_TAG" "$PLUGIN_ZIP" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "v${VERSION} — Optional Network Metadata Plugin" \
+              --notes-file plugin-release-notes.md
+          fi
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --target "$GITHUB_SHA" \
               --title "v${VERSION} — Automatic ASN / IP Geolocation" \
               --notes-file release-notes.md
-            gh release upload "$TAG" "$ZIP" "$PLUGIN_ZIP" --clobber
+            gh release upload "$TAG" "$ZIP" --clobber
           else
-            gh release create "$TAG" "$ZIP" "$PLUGIN_ZIP" \
+            gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
               --title "v${VERSION} — Automatic ASN / IP Geolocation" \
               --notes-file release-notes.md
           fi
+
+          # Remove a formerly co-published plugin ZIP from the main release.
+          if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -Fxq "$PLUGIN_ZIP"; then
+            gh release delete-asset "$TAG" "$PLUGIN_ZIP" --yes
+          fi
+
+          ASSET_COUNT=$(gh release view "$TAG" --json assets --jq '.assets | length')
+          if [ "$ASSET_COUNT" -ne 1 ]; then
+            echo "::error::Main Komari release must contain exactly one theme ZIP, found ${ASSET_COUNT}"
+            exit 1
+          fi
+          gh release view "$TAG" --json assets --jq '.assets[0].name' | grep -Fx "$ZIP"
