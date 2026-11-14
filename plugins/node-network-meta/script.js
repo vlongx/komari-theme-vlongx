@@ -4,7 +4,7 @@ const server = require("server");
 const ROUTE = "/api/vlongx/node-network-meta";
 const PROVIDER = "https://api.ipapi.is/?q=";
 const META_TTL = 12 * 60 * 60 * 1000;
-const ERROR_TTL = 30 * 60 * 1000;
+const ERROR_TTL = 5 * 60 * 1000;
 const MAX_NODES = 300;
 const MAX_CONCURRENT_LOOKUPS = 5;
 let snapshot = null;
@@ -119,7 +119,10 @@ async function refresh() {
     nodes_with_asn: values.filter((value) => value.asn).length,
     nodes_with_country: values.filter((value) => value.ipv4_country || value.ipv6_country).length
   };
-  snapshot = { nodes: output, diagnostics, updated_at: new Date().toISOString(), expires: Date.now() + META_TTL };
+  // Avoid caching an unavailable provider or missing public IP for 12 hours.
+  const refreshTTL = diagnostics.nodes_with_asn || diagnostics.nodes_with_country
+    ? META_TTL : ERROR_TTL;
+  snapshot = { nodes: output, diagnostics, updated_at: new Date().toISOString(), expires: Date.now() + refreshTTL };
   return snapshot;
 }
 
