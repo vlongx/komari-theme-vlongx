@@ -168,7 +168,7 @@ async function respond(req, res) {
     }));
   } catch (error) {
     // Fail closed on any authorization, RPC or provider failure. Log category only.
-    console.error("[vlongx-node-network-meta] RPC or query failed:", String(error && error.message || error).slice(0, 120));
+    console.error("[vlongx-node-network-meta] node metadata refresh failed");
     res.statusCode = 503;
     res.end(JSON.stringify({ nodes: {}, error: "metadata_unavailable" }));
   }
